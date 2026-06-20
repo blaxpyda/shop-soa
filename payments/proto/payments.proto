@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package grocery.payment;
+
+option go_package = "thugcorp.io/grocery/payment/proto";
+
+
+// ==================== SERVICE ====================
+
+service PaymentService {
+  rpc InitiatePayment(InitiatePaymentRequest) returns (PaymentResponse);
+  rpc ConfirmPayment(ConfirmPaymentRequest) returns (PaymentResponse);
+  rpc GetPaymentStatus(GetPaymentRequest) returns (PaymentResponse);
+  rpc RefundPayment(RefundRequest) returns (RefundResponse);
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse);
+}
+
+// ==================== ENUMS ====================
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_PENDING     = 1;
+  PAYMENT_STATUS_COMPLETED   = 2;
+  PAYMENT_STATUS_FAILED      = 3;
+  PAYMENT_STATUS_REFUNDED    = 4;
+}
+
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED   = 0;
+  PAYMENT_METHOD_CARD          = 1;
+  PAYMENT_METHOD_MOBILE_MONEY  = 2;
+  PAYMENT_METHOD_CASH          = 3;
+}
+
+enum PaymentProvider {
+  PAYMENT_PROVIDER_UNSPECIFIED = 0;
+  PAYMENT_PROVIDER_MTN         = 1;
+  PAYMENT_PROVIDER_AIRTEL      = 2;
+  PAYMENT_PROVIDER_BANK        = 3;
+}
+
+// ==================== MESSAGES ====================
+
+message InitiatePaymentRequest {
+  string order_id        = 1;
+  string user_id         = 2;
+  string business_id     = 3;
+  double amount          = 4;
+  string currency        = 5;
+  string payment_method  = 6;
+  string provider        = 7;
+  map<string, string> metadata = 8;
+}
+
+message ConfirmPaymentRequest {
+  string payment_id      = 1;
+  string transaction_ref = 2;
+  string provider        = 3;
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message RefundRequest {
+  string payment_id = 1;
+  double amount     = 2;
+  string reason     = 3;
+}
+
+message ListPaymentsRequest {
+  string user_id     = 1;
+  string business_id = 2;
+  string status      = 3;
+  int32  page        = 4;
+  int32  page_size   = 5;
+}
+
+// ==================== RESPONSES ====================
+
+message PaymentResponse {
+  string id              = 1;
+  string order_id        = 2;
+  string user_id         = 3;
+  string business_id     = 4;
+  double amount          = 5;
+  string currency        = 6;
+  string status          = 7;
+  string payment_method  = 8;
+  string provider        = 9;
+  string transaction_ref = 10;
+  string error_message   = 11;
+  string created_at      = 12;  // RFC 3339 timestamp
+  string updated_at      = 13;  // RFC 3339 timestamp
+}
+
+message RefundResponse {
+  bool   success        = 1;
+  string refund_id      = 2;
+  string status         = 3;
+  string error_message  = 4;
+}
+
+message ListPaymentsResponse {
+  repeated PaymentResponse payments = 1;
+  int32 total    = 2;
+  bool  has_more = 3;
+}

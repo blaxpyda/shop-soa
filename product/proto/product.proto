@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package grocery.product;
+option go_package = "github.com/blaxpyda/grocery/proto/product";
+
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (Product);
+  rpc GetProduct(GetProductRequest) returns (Product);
+  rpc UpdateProduct(UpdateProductRequest) returns (Product);
+  rpc DeleteProduct(DeleteProductRequest) returns (DeleteResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+  rpc SearchProducts(SearchProductsRequest) returns (ListProductsResponse);
+}
+
+message Product {
+  string id = 1;
+  string business_id =2;
+  string name = 3;
+  string category = 4;
+  double salesprice = 5;
+  double purchaseprices = 6;
+  int32 stock = 7;
+  string suppliercontact = 8;
+  string suppliername = 9;
+  string image_url = 10;
+  bool is_active = 11;
+}
+
+message CreateProductRequest {
+  string name = 1;
+  string category = 2;
+  double salesprice = 3;
+  double purchaseprices = 4;
+  int32 stock = 5;
+  string suppliercontact = 6;
+  string suppliername = 7;
+  string image_url = 8;
+}
+
+message GetProductRequest {
+  string product_id = 1;
+}
+
+message UpdateProductRequest {
+  string product_id = 1;
+  string name = 2;
+  string category = 3;
+  double price = 4;
+  int32 stock = 5;
+  string image_url = 6;
+}
+
+message DeleteProductRequest {
+  string product_id = 1;
+}
+
+message ListProductsRequest {
+  string category = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message SearchProductsRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message ListProductsResponse {
+  repeated Product products = 1;
+  int32 total = 2;
+}
+
+message DeleteResponse {
+  bool success = 1;
+}

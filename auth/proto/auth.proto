@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package grocery.identity;
+option go_package = "thugcorp.io/grocery/proto/identity";
+
+// ==========================================
+// SERVICE DEFINITION
+// ==========================================
+
+service IdentityService {
+  // --- 1. Public Auth Flows (No JWT required) ---
+  rpc Signup(SignupRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc VerifyCode(VerifyCodeRequest) returns (AuthResponse);
+  rpc ResendCode(ResendCodeRequest) returns (EmptyResponse);
+
+  // --- 2. Self-Service Profile (JWT REQUIRED) ---
+  // Note: user_id is intentionally omitted. The server extracts it from the JWT context!
+  rpc GetProfile(GetProfileRequest) returns (User);
+  rpc UpdateProfile(UpdateProfileRequest) returns (User);
+  rpc ChangePassword(ChangePasswordRequest) returns (EmptyResponse);
+
+  // --- 3. Admin / Internal User Management (JWT + Admin Role REQUIRED) ---
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc DeleteUser(DeleteUserRequest) returns (EmptyResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+// ==========================================
+// AUTH MESSAGES
+// ==========================================
+
+message SignupRequest {
+  string email = 1;          
+  string phone = 2;      
+  string password = 3;
+  string first_name = 4;
+  string last_name = 5;
+}
+
+message LoginRequest {
+  string identifier = 1; // Client can send EITHER email or phone here
+  string password = 2;
+}
+
+message VerifyCodeRequest {
+  string identifier = 1; // Email or phone used during signup
+  string code = 2;
+}
+
+message ResendCodeRequest {
+  string identifier = 1; // Email or phone
+}
+
+message AuthResponse {
+  string user_id = 1;
+  string token = 2;                    
+  string refresh_token = 3;
+  bool needs_verify = 4;
+  string verify_method = 5;            
+  string error_message = 6; // Renamed from 'error' to avoid reserved keyword issues
+}
+
+// ==========================================
+// UNIFIED USER MESSAGE
+// ==========================================
+
+// Replaces both 'ProfileResponse' and 'User'. One source of truth!
+message User {
+  string id = 1;
+  string email = 2;
+  string phone = 3;
+  string first_name = 4;
+  string last_name = 5;
+  string role = 6;
+  string business_id = 7;        
+  string address = 8;
+  string city = 9;
+  string country = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
+// ==========================================
+// SELF-SERVICE PROFILE REQUESTS
+// ==========================================
+
+// EMPTY! The Auth Interceptor will inject the user_id into the Go context.
+message GetProfileRequest {}
+
+message UpdateProfileRequest {
+  string first_name = 1;
+  string last_name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+  string city = 6;
+  string country = 7;
+}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+  string confirm_password = 3;
+}
+
+// ==========================================
+// ADMIN / INTERNAL REQUESTS
+// ==========================================
+
+message CreateUserRequest {
+  string email = 1;
+  string phone = 2;
+  string password = 3;           
+  string first_name = 4;
+  string last_name = 5;
+  string role = 6;               
+  string business_id = 7;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string phone = 4;
+  string email = 5;
+  string role = 6;
+  string business_id = 7;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string role = 3;               
+  string business_id = 4;        // Crucial for a grocery app: filter by business/tenant
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+}
+
+// ==========================================
+// COMMON MESSAGES
+// ==========================================
+
+message EmptyResponse {
+  bool success = 1;
+  string error_message = 2;  
+}

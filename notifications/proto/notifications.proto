@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package notifications.v1;
+
+option go_package = "github.com/yourorg/grocery/gen/go/notifications/v1;notificationsv1";
+
+import "google/protobuf/timestamp.proto";
+
+// NotificationService delivers messages to customers and businesses across
+// push, SMS, email, and in-app channels, and serves the in-app inbox.
+service NotificationService {
+  // Send dispatches a notification. Called by other services directly, or by
+  // an event consumer reacting to domain events (order.confirmed, etc.).
+  // It resolves the recipient's contact details and channel preferences
+  // internally, then queues delivery.
+  rpc Send(SendRequest) returns (SendResponse);
+
+  // --- In-app inbox (needs a real request/response API) ---
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  // --- Per-recipient channel preferences ---
+  rpc GetPreferences(GetPreferencesRequest) returns (NotificationPreferences);
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (NotificationPreferences);
+}
+
+// Recipient is either a customer or a business (vendor). The service looks up
+// stored contact details by id; the optional fields override them when needed.
+message Recipient {
+  oneof id {
+    string user_id = 1;
+    string business_id = 2;
+  }
+  string email = 10;
+  string phone = 11;       // E.164, e.g. +2567XXXXXXXX
+  string push_token = 12;
+}
+
+enum Channel {
+  CHANNEL_UNSPECIFIED = 0;
+  CHANNEL_PUSH = 1;
+  CHANNEL_SMS = 2;
+  CHANNEL_EMAIL = 3;
+  CHANNEL_IN_APP = 4;
+}
+
+// Category drives opt-out rules: transactional messages always send;
+// promotional ones respect the recipient's preferences.
+enum Category {
+  CATEGORY_UNSPECIFIED = 0;
+  CATEGORY_TRANSACTIONAL = 1;  // order, payment, delivery updates
+  CATEGORY_PROMOTIONAL = 2;    // marketing, offers
+  CATEGORY_ACCOUNT = 3;        // security, login alerts
+}
+
+message SendRequest {
+  Recipient recipient = 1;
+
+  // Template defines the copy per channel; variables fill the placeholders.
+  // Keeps message wording out of the calling service.
+  string template_id = 2;             // e.g. "order_confirmed"
+  map<string, string> variables = 3;  // e.g. {"order_id": "1234", "total": "45000"}
+
+  Category category = 4;
+
+  // Optional: restrict to specific channels. Empty = the template's defaults,
+  // intersected with the recipient's preferences.
+  repeated Channel channels = 5;
+
+  // Dedupe key so retries (or duplicate events) don't double-send.
+  string idempotency_key = 6;
+}
+
+message SendResponse {
+  string notification_id = 1;
+  // One Send can fan out to several channels, so report each separately.
+  repeated ChannelResult results = 2;
+}
+
+message ChannelResult {
+  Channel channel = 1;
+  DeliveryStatus status = 2;
+  string detail = 3;  // failure reason, provider message id, etc.
+}
+
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_QUEUED = 1;
+  DELIVERY_STATUS_SENT = 2;
+  DELIVERY_STATUS_SUPPRESSED = 3;  // blocked by preference / opt-out
+  DELIVERY_STATUS_FAILED = 4;
+}
+
+message Notification {
+  string id = 1;
+  string title = 2;
+  string body = 3;
+  Category category = 4;
+  bool read = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // Deep-link payload for the client, e.g. {"screen": "order", "order_id": "1234"}.
+  map<string, string> data = 7;
+}
+
+message ListNotificationsRequest {
+  string user_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;   // opaque cursor from a previous response
+  bool unread_only = 4;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  string next_page_token = 2;
+}
+
+message MarkReadRequest {
+  string user_id = 1;
+  repeated string notification_ids = 2;  // empty = mark everything read
+}
+
+message MarkReadResponse {
+  int32 updated_count = 1;
+}
+
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 count = 1;
+}
+
+message ChannelPreference {
+  Category category = 1;
+  repeated Channel enabled_channels = 2;
+}
+
+message NotificationPreferences {
+  string user_id = 1;
+  repeated ChannelPreference preferences = 2;
+}
+
+message GetPreferencesRequest {
+  string user_id = 1;
+}
+
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  repeated ChannelPreference preferences = 2;
+}

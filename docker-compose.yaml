@@ -1,0 +1,382 @@
+services:
+
+  # ── Databases ─────────────────────────────────────────────────────────────
+
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  product-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: product_db
+    volumes:
+      - product_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  orders-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders_db
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  business-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: business_db
+    volumes:
+      - business_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  inventory-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory_db
+    volumes:
+      - inventory_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  notifications-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notifications_db
+    volumes:
+      - notifications_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  transactions-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: transactions_db
+    volumes:
+      - transactions_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  payment-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payment_db
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+    networks:
+      - grocery_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Services ──────────────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    environment:
+      AUTH_POSTGRES_HOST: auth-db
+      AUTH_POSTGRES_PORT: 5432
+      AUTH_POSTGRES_USER: postgres
+      AUTH_POSTGRES_PASSWORD: postgres
+      AUTH_POSTGRES_DBNAME: auth_db
+      AUTH_POSTGRES_SSLMODE: disable
+      AUTH_GRPC_PORT: 50052
+      AUTH_JWT_PRIVATE_KEY_PATH: /app/secrets/jwt_private.pem
+      AUTH_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  product-service:
+    build:
+      context: ./product
+      dockerfile: Dockerfile
+    environment:
+      PRODUCT_POSTGRES_HOST: product-db
+      PRODUCT_POSTGRES_PORT: 5439
+      PRODUCT_POSTGRES_USER: postgres
+      PRODUCT_POSTGRES_PASSWORD: postgres
+      PRODUCT_POSTGRES_DBNAME: product_db
+      PRODUCT_POSTGRES_SSLMODE: disable
+      PRODUCT_GRPC_PORT: 50060
+      PRODUCT_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      product-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  cart-service:
+    build:
+      context: ./cart
+      dockerfile: Dockerfile
+    environment:
+      CART_REDIS_ADDR: redis:6379
+      CART_REDIS_PASSWORD: ""
+      CART_REDIS_DB: 0
+      CART_GRPC_PORT: 50054
+      CART_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  orders-service:
+    build:
+      context: ./orders
+      dockerfile: Dockerfile
+    environment:
+      ORDERS_POSTGRES_HOST: orders-db
+      ORDERS_POSTGRES_PORT: 5436
+      ORDERS_POSTGRES_USER: postgres
+      ORDERS_POSTGRES_PASSWORD: postgres
+      ORDERS_POSTGRES_DBNAME: orders_db
+      ORDERS_POSTGRES_SSLMODE: disable
+      ORDERS_GRPC_PORT: 50057
+      ORDERS_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      orders-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  notifications-service:
+    build:
+      context: ./notifications
+      dockerfile: Dockerfile
+    environment:
+      NOTIFICATIONS_POSTGRES_HOST: notifications-db
+      NOTIFICATIONS_POSTGRES_PORT: 5435
+      NOTIFICATIONS_POSTGRES_USER: postgres
+      NOTIFICATIONS_POSTGRES_PASSWORD: postgres
+      NOTIFICATIONS_POSTGRES_DBNAME: notifications_db
+      NOTIFICATIONS_POSTGRES_SSLMODE: disable
+      NOTIFICATIONS_GRPC_PORT: 50056
+      NOTIFICATIONS_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      notifications-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  business-service:
+    build:
+      context: ./business
+      dockerfile: Dockerfile
+    environment:
+      BUSINESS_POSTGRES_HOST: business-db
+      BUSINESS_POSTGRES_PORT: 5433
+      BUSINESS_POSTGRES_USER: postgres
+      BUSINESS_POSTGRES_PASSWORD: postgres
+      BUSINESS_POSTGRES_DBNAME: business_db
+      BUSINESS_POSTGRES_SSLMODE: disable
+      BUSINESS_GRPC_PORT: 50053
+      BUSINESS_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      business-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  inventory-service:
+    build:
+      context: ./inventory
+      dockerfile: Dockerfile
+    environment:
+      INVENTORY_POSTGRES_HOST: inventory-db
+      INVENTORY_POSTGRES_PORT: 5434
+      INVENTORY_POSTGRES_USER: postgres
+      INVENTORY_POSTGRES_PASSWORD: postgres
+      INVENTORY_POSTGRES_DBNAME: inventory_db
+      INVENTORY_POSTGRES_SSLMODE: disable
+      INVENTORY_GRPC_PORT: 50055
+      INVENTORY_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  transactions-service:
+    build:
+      context: ./transactions
+      dockerfile: Dockerfile
+    environment:
+      TRANSACTION_POSTGRES_HOST: transactions-db
+      TRANSACTION_POSTGRES_PORT: 5438
+      TRANSACTION_POSTGRES_USER: postgres
+      TRANSACTION_POSTGRES_PASSWORD: postgres
+      TRANSACTION_POSTGRES_DBNAME: transactions_db
+      TRANSACTION_POSTGRES_SSLMODE: disable
+      TRANSACTION_GRPC_PORT: 50059
+      TRANSACTION_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+      TRANSACTION_SERVICES_ORDER_ADDR: orders-service:50057
+      TRANSACTION_SERVICES_INVENTORY_ADDR: inventory-service:50055
+      TRANSACTION_SERVICES_PAYMENT_ADDR: payment-service:50059
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      transactions-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  payment-service:
+    build:
+      context: ./payments
+      dockerfile: Dockerfile
+    environment:
+      PAYMENT_POSTGRES_HOST: payment-db
+      PAYMENT_POSTGRES_PORT: 5437
+      PAYMENT_POSTGRES_USER: postgres
+      PAYMENT_POSTGRES_PASSWORD: postgres
+      PAYMENT_POSTGRES_DBNAME: payment_db
+      PAYMENT_POSTGRES_SSLMODE: disable
+      PAYMENT_GRPC_PORT: 50058
+      PAYMENT_JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+      PAYMENT_MTN_BASE_URL: https://sandbox.momodeveloper.mtn.com
+      PAYMENT_MTN_SUBSCRIPTION_KEY: your-subscription-key
+      PAYMENT_MTN_API_USER: your-api-user-uuid
+      PAYMENT_MTN_API_KEY: your-api-key
+      PAYMENT_MTN_ENVIRONMENT: sandbox
+      PAYMENT_MTN_PAYEE_ID: "256XXXXXXXXX"
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    networks:
+      - grocery_network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      JWT_PUBLIC_KEY_PATH: /app/secrets/jwt_public.pem
+      LISTEN_ADDR: :8080
+      AUTH_ADDR: auth-service:50052
+      PRODUCTS_ADDR: product-service:50052
+      CART_ADDR: cart-service:50053
+      ORDERS_ADDR: orders-service:50054
+      NOTIFICATIONS_ADDR: notifications-service:50055
+      BUSINESS_ADDR: business-service:50056
+      INVENTORY_ADDR: inventory-service:50057
+      TRANSACTIONS_ADDR: transactions-service:50058
+    volumes:
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      - auth-service
+      - product-service
+      - cart-service
+      - orders-service
+      - notifications-service
+      - business-service
+      - inventory-service
+      - transactions-service
+    networks:
+      - grocery_network
+
+volumes:
+  auth_db_data:
+  product_db_data:
+  orders_db_data:
+  business_db_data:
+  inventory_db_data:
+  notifications_db_data:
+  transactions_db_data:
+  payment_db_data:
+
+networks:
+  grocery_network:
+    driver: bridge

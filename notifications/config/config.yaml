@@ -1,0 +1,21 @@
+app:
+  name: notifications-service
+  environment: development
+  port: 8085
+  log_level: debug
+
+postgres:
+  host: localhost
+  port: 5435
+  user: postgres
+  password: postgres
+  dbname: notifications_db
+  sslmode: disable
+
+grpc:
+  port: 50056
+
+jwt:
+  private_key_path: "../../secrets/jwt_private.pem"
+  public_key_path: "../../secrets/jwt_public.pem"
+  access_token_ttl: 3600

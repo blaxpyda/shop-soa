@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option go_package = "github.com/yourorg/grocery/gen/go/inventory/v1;inventoryv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+// InventoryService tracks stock per (business, product, location) and manages
+// the reserve -> commit -> release lifecycle that protects stock during checkout.
+service InventoryService {
+  // --- Read path (product page, cart) ---
+  // Batched: a cart has many lines, so check them in one round trip.
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  rpc GetStock(GetStockRequest) returns (StockItem);
+
+  // --- Reservation lifecycle (the core) ---
+  // Reserve holds stock for an order with a TTL. Atomic: all-or-nothing.
+  rpc Reserve(ReserveRequest) returns (ReserveResponse);
+  // Commit converts a hold into a permanent deduction (on payment success).
+  rpc CommitReservation(CommitReservationRequest) returns (CommitReservationResponse);
+  // Release frees a hold back to available (cancel, payment fail, or expiry).
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (ReleaseReservationResponse);
+
+  // --- Vendor-facing stock management ---
+  rpc AdjustStock(AdjustStockRequest) returns (StockItem);
+  rpc ListStock(ListStockRequest) returns (ListStockResponse);
+}
+
+// A stock record is keyed by business + product + location. on_hand is the
+// physical count; reserved is held by active reservations; available is the
+// difference and is what customers can actually buy.
+message StockItem {
+  string business_id = 1;
+  string product_id = 2;        // references the Products catalog
+  string location_id = 3;       // "" for single-location businesses
+
+  int64 on_hand = 4;            // physical units present
+  int64 reserved = 5;           // units held by active reservations
+  int64 available = 6;          // derived: on_hand - reserved (returned for convenience)
+
+  int64 low_stock_threshold = 7;
+  StockState state = 8;
+
+  // Optimistic-concurrency token. Pass it back on AdjustStock to avoid
+  // clobbering a concurrent update. Stock is the most race-prone data you have.
+  string version = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+enum StockState {
+  STOCK_STATE_UNSPECIFIED = 0;
+  STOCK_STATE_IN_STOCK = 1;
+  STOCK_STATE_LOW = 2;            // at or below low_stock_threshold
+  STOCK_STATE_OUT_OF_STOCK = 3;
+  STOCK_STATE_DISCONTINUED = 4;
+}
+
+// --- Availability ---
+
+message AvailabilityQuery {
+  string business_id = 1;
+  string product_id = 2;
+  string location_id = 3;
+  int64 quantity = 4;            // how many the customer wants
+}
+
+message CheckAvailabilityRequest {
+  repeated AvailabilityQuery items = 1;
+}
+
+message AvailabilityResult {
+  string product_id = 1;
+  string location_id = 2;
+  int64 available = 3;
+  bool sufficient = 4;           // available >= requested quantity
+  StockState state = 5;
+}
+
+message CheckAvailabilityResponse {
+  repeated AvailabilityResult results = 1;
+}
+
+// --- Reservation lifecycle ---
+
+message ReserveItem {
+  string business_id = 1;
+  string product_id = 2;
+  string location_id = 3;
+  int64 quantity = 4;
+}
+
+message ReserveRequest {
+  string order_id = 1;                  // what the hold is for
+  repeated ReserveItem items = 2;
+  google.protobuf.Duration ttl = 3;     // hold auto-expires if not committed
+  string idempotency_key = 4;           // retries/duplicate events must not double-hold
+}
+
+message ReserveResponse {
+  string reservation_id = 1;
+  ReservationStatus status = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  // On FAILED, lists the lines that couldn't be held so the caller can offer
+  // substitutions or remove items.
+  repeated AvailabilityResult shortfalls = 4;
+}
+
+enum ReservationStatus {
+  RESERVATION_STATUS_UNSPECIFIED = 0;
+  RESERVATION_STATUS_HELD = 1;
+  RESERVATION_STATUS_FAILED = 2;        // insufficient stock on one or more lines
+}
+
+message CommitReservationRequest {
+  string reservation_id = 1;
+  string idempotency_key = 2;
+}
+
+message CommitReservationResponse {
+  bool committed = 1;
+}
+
+message ReleaseReservationRequest {
+  string reservation_id = 1;
+  string reason = 2;                    // "cancelled", "payment_failed", "expired"
+}
+
+message ReleaseReservationResponse {
+  bool released = 1;
+}
+
+// --- Vendor stock management ---
+
+enum AdjustmentReason {
+  ADJUSTMENT_REASON_UNSPECIFIED = 0;
+  ADJUSTMENT_REASON_RESTOCK = 1;
+  ADJUSTMENT_REASON_SPOILAGE = 2;       // perishables expired or damaged
+  ADJUSTMENT_REASON_CORRECTION = 3;     // fix after a manual count
+  ADJUSTMENT_REASON_RETURN = 4;         // customer return back to shelf
+  ADJUSTMENT_REASON_STOCKTAKE = 5;      // full physical recount
+}
+
+message AdjustStockRequest {
+  string business_id = 1;
+  string product_id = 2;
+  string location_id = 3;
+
+  oneof change {
+    int64 delta = 4;                    // relative: +50 restock, -3 spoilage
+    int64 set_to = 5;                   // absolute: result of a physical count
+  }
+
+  AdjustmentReason reason = 6;
+  string note = 7;
+  string expected_version = 8;          // optimistic-concurrency check (optional)
+  string idempotency_key = 9;
+}
+
+message GetStockRequest {
+  string business_id = 1;
+  string product_id = 2;
+  string location_id = 3;
+}
+
+message ListStockRequest {
+  string business_id = 1;
+  string location_id = 2;               // optional filter
+  StockState state_filter = 3;          // optional, e.g. only LOW / OUT_OF_STOCK
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListStockResponse {
+  repeated StockItem items = 1;
+  string next_page_token = 2;
+}

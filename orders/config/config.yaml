@@ -1,0 +1,21 @@
+app:
+  name: orders-service
+  environment: development
+  port: 8086
+  log_level: debug
+
+postgres:
+  host: localhost
+  port: 5436
+  user: postgres
+  password: postgres
+  dbname: orders_db
+  sslmode: disable
+
+grpc:
+  port: 50057
+
+jwt:
+  private_key_path: "../../secrets/jwt_private.pem"
+  public_key_path: "../../secrets/jwt_public.pem"
+  access_token_ttl: 3600

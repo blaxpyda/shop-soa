@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash -c \"go get github.com/google/uuid\")",
+      "Bash(go build *)",
+      "Bash(xargs sed -i 's/golang:1.24-alpine/golang:1.26-alpine/g')"
+    ]
+  }
+}

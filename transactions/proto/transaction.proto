@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package grocery.transaction;
+option go_package = "github.com/blaxpyda/grocery/proto/transaction";
+
+service TransactionService {
+  rpc CreateTransaction(CreateTransactionRequest) returns (Transaction);
+  rpc GetTransaction(GetTransactionRequest) returns (Transaction);
+  rpc UpdateTransactionStatus(UpdateStatusRequest) returns (Transaction);
+  rpc DeleteTransaction(DeleteTransactionRequest) returns (DeleteResponse);
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+}
+
+message Transaction {
+  string id = 1;
+  string user_id = 2;
+  string business_id = 3;
+  repeated TransactionItem items = 4;
+  double total_amount = 5;
+  string status = 6;           // pending, completed, cancelled
+  string payment_method = 7;
+}
+
+message TransactionItem {
+  string product_id = 1;
+  string product_name = 2;
+  string business_id = 3;
+  int32 quantity = 4;
+  double price = 5;            // price at time of purchase
+}
+
+message CreateTransactionRequest {
+  string user_id = 1;
+  repeated TransactionItem items = 2;
+  string business_id = 3;
+  string payment_method = 4;
+}
+
+message GetTransactionRequest {
+  string transaction_id = 1;
+}
+
+message UpdateStatusRequest {
+  string transaction_id = 1;
+  string status = 2;
+}
+
+message DeleteTransactionRequest {
+  string transaction_id = 1;
+}
+
+message ListTransactionsRequest {
+  string user_id = 1;
+  string business_id = 2;
+  string status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int32 total = 2;
+}
+
+message DeleteResponse {
+  bool success = 1;
+}
