@@ -1,0 +1,15 @@
+app:
+  name: ordering-service
+  environment: development
+
+sqlite:
+  path: ""
+
+grpc:
+  port: 50054
+
+jwt:
+  public_key_path: ""
+
+catalog:
+  address: "localhost:50053"

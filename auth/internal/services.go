@@ -20,13 +20,12 @@ type AuthService interface {
 	Login(ctx context.Context, email, phone, password string) (*domain.User, string, error)
 	VerifyCode(ctx context.Context, userID, code string) (*domain.User, string, error)
 	ResendCode(ctx context.Context, userID string) error
-
 	GetProfile(ctx context.Context, userID string) (*domain.User, error)
 	UpdateProfile(ctx context.Context, userID string, input domain.UpdateUserInput) (*domain.User, error)
 	ForgotPassword(ctx context.Context, emailOrPhone string) error
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
-
 	CreateUser(ctx context.Context, callerRole string, input domain.CreateUserInput) (*domain.User, error)
+	ListUsers(ctx context.Context, filter domain.ListUsersFilter) ([]*domain.User, error)
 }
 
 // tokenClaims mirrors the fields parsed by middleware.CustomClaims so tokens
@@ -46,10 +45,10 @@ type authService struct {
 	tokenTTL       int
 }
 
-func NewAuthService(authRepository AuthRepository, sms utils.SMSService, privateKey *rsa.PrivateKey, tokenTTL int) *authService {
+func NewAuthService(authRepository AuthRepository, sms utils.SMSService, email utils.EmailService, privateKey *rsa.PrivateKey, tokenTTL int) *authService {
 	return &authService{
 		authRepository: authRepository,
-		email:          utils.NewEmailService(),
+		email:          email,
 		sms:            sms,
 		privateKey:     privateKey,
 		tokenTTL:       tokenTTL,
@@ -313,6 +312,14 @@ func (s *authService) CreateUser(ctx context.Context, callerRole string, input d
 	}
 	user.IsVerified = true
 	return user, nil
+}
+
+func (s *authService) ListUsers(ctx context.Context, filter domain.ListUsersFilter) ([]*domain.User, error) {
+	users, _, err := s.authRepository.ListUsers(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 // ---- Helpers ----

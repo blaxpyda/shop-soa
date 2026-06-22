@@ -4,18 +4,30 @@ app:
   port: 8080
   log_level: debug
 
-postgres:
-  host: localhost
-  port: 5432
-  user: postgres
-  password: postgres
-  dbname: auth_db
-  sslmode: disable
+sqlite:
+  path: ""
 
 grpc:
   port: 50052
 
+
+easysend_sms:
+  api_key: ""
+  sender_id: ""
+
+gmail:
+  host: smtp.gmail.com
+  port: 587
+  username: ""
+  password: ""
+
 jwt:
-  private_key_path: "../../secrets/jwt_private.pem"
-  public_key_path: "../../secrets/jwt_public.pem"
+  private_key_path: ""
+  public_key_path: ""
   access_token_ttl: 3600
+
+super_admin:
+  email: ""
+  password: ""
+  first_name: "Super"
+  last_name: "Admin"

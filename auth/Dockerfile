@@ -1,9 +1,16 @@
+# syntax=docker/dockerfile:1
 FROM golang:1.26-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    go mod download
 COPY . .
-RUN go build -o /app/auth-service .
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o /app/auth-service .
 
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/auth-service /app/auth-service
+COPY --from=builder /app/config /app/config
 CMD ["/app/auth-service"]

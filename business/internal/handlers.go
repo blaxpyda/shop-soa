@@ -127,7 +127,5 @@ func mapToProto(b *domain.Business) *pb.Business {
 		City:        b.City,
 		Country:     b.Country,
 		IsActive:    b.IsActive,
-		CreatedAt:   b.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   b.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

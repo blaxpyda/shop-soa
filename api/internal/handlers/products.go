@@ -3,22 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	productpb "thugcorp.io/grocery/product/proto"
+	catalogpb "thugcorp.io/catalog/proto"
+	"thugcorp.io/grocery/api/internal/middleware"
 	"thugcorp.io/grocery/api/internal/respond"
 )
 
 // GET /v1/products
 func (h *Handlers) ListProducts(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
-
-	resp, err := h.svc.Products.ListProducts(h.outgoingCtx(r), &productpb.ListProductsRequest{
-		Category: r.URL.Query().Get("category"),
-		Page:     int32(page),
-		PageSize: int32(pageSize),
+	resp, err := h.svc.Catalog.ListProducts(h.outgoingCtx(r), &catalogpb.ListProductsRequest{
+		BusinessId: r.URL.Query().Get("business_id"),
+		PageSize:   pageSize(r),
+		PageToken:  r.URL.Query().Get("page_token"),
 	})
 	if err != nil {
 		respond.GRPCError(w, err)
@@ -27,15 +24,12 @@ func (h *Handlers) ListProducts(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, resp)
 }
 
-// GET /v1/products/search
+// GET /v1/products/search — not in catalog proto; forward as ListProducts with business filter
 func (h *Handlers) SearchProducts(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
-
-	resp, err := h.svc.Products.SearchProducts(h.outgoingCtx(r), &productpb.SearchProductsRequest{
-		Query:    r.URL.Query().Get("q"),
-		Page:     int32(page),
-		PageSize: int32(pageSize),
+	resp, err := h.svc.Catalog.ListProducts(h.outgoingCtx(r), &catalogpb.ListProductsRequest{
+		BusinessId: r.URL.Query().Get("business_id"),
+		PageSize:   pageSize(r),
+		PageToken:  r.URL.Query().Get("page_token"),
 	})
 	if err != nil {
 		respond.GRPCError(w, err)
@@ -46,7 +40,7 @@ func (h *Handlers) SearchProducts(w http.ResponseWriter, r *http.Request) {
 
 // GET /v1/products/{id}
 func (h *Handlers) GetProduct(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.svc.Products.GetProduct(h.outgoingCtx(r), &productpb.GetProductRequest{
+	resp, err := h.svc.Catalog.GetProduct(h.outgoingCtx(r), &catalogpb.GetProductRequest{
 		ProductId: chi.URLParam(r, "id"),
 	})
 	if err != nil {
@@ -58,30 +52,31 @@ func (h *Handlers) GetProduct(w http.ResponseWriter, r *http.Request) {
 
 // POST /v1/products
 func (h *Handlers) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	_, _, businessID, _ := middleware.ClaimsFromCtx(r.Context())
+
 	var body struct {
-		Name            string  `json:"name"`
-		Category        string  `json:"category"`
-		SalesPrice      float64 `json:"salesprice"`
-		PurchasePrices  float64 `json:"purchaseprices"`
-		Stock           int32   `json:"stock"`
-		SupplierContact string  `json:"suppliercontact"`
-		SupplierName    string  `json:"suppliername"`
-		ImageURL        string  `json:"image_url"`
+		Name         string `json:"name"`
+		Description  string `json:"description"`
+		Category     string `json:"category"`
+		Price        int64  `json:"price"`
+		Currency     string `json:"currency"`
+		ImageURL     string `json:"image_url"`
+		InitialStock int64  `json:"initial_stock"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		respond.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	resp, err := h.svc.Products.CreateProduct(h.outgoingCtx(r), &productpb.CreateProductRequest{
-		Name:            body.Name,
-		Category:        body.Category,
-		Salesprice:      body.SalesPrice,
-		Purchaseprices:  body.PurchasePrices,
-		Stock:           body.Stock,
-		Suppliercontact: body.SupplierContact,
-		Suppliername:    body.SupplierName,
-		ImageUrl:        body.ImageURL,
+	resp, err := h.svc.Catalog.CreateProduct(h.outgoingCtx(r), &catalogpb.CreateProductRequest{
+		BusinessId:   businessID,
+		Name:         body.Name,
+		Description:  body.Description,
+		Category:     body.Category,
+		Price:        body.Price,
+		Currency:     body.Currency,
+		ImageUrl:     body.ImageURL,
+		InitialStock: body.InitialStock,
 	})
 	if err != nil {
 		respond.GRPCError(w, err)
@@ -93,24 +88,29 @@ func (h *Handlers) CreateProduct(w http.ResponseWriter, r *http.Request) {
 // PUT /v1/products/{id}
 func (h *Handlers) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name     string  `json:"name"`
-		Category string  `json:"category"`
-		Price    float64 `json:"price"`
-		Stock    int32   `json:"stock"`
-		ImageURL string  `json:"image_url"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Category    string `json:"category"`
+		Price       int64  `json:"price"`
+		Active      *bool  `json:"active"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		respond.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	resp, err := h.svc.Products.UpdateProduct(h.outgoingCtx(r), &productpb.UpdateProductRequest{
-		ProductId: chi.URLParam(r, "id"),
-		Name:      body.Name,
-		Category:  body.Category,
-		Price:     body.Price,
-		Stock:     body.Stock,
-		ImageUrl:  body.ImageURL,
+	active := true
+	if body.Active != nil {
+		active = *body.Active
+	}
+
+	resp, err := h.svc.Catalog.UpdateProduct(h.outgoingCtx(r), &catalogpb.UpdateProductRequest{
+		ProductId:   chi.URLParam(r, "id"),
+		Name:        body.Name,
+		Description: body.Description,
+		Category:    body.Category,
+		Price:       body.Price,
+		Active:      active,
 	})
 	if err != nil {
 		respond.GRPCError(w, err)
@@ -119,14 +119,7 @@ func (h *Handlers) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, resp)
 }
 
-// DELETE /v1/products/{id}
+// DELETE /v1/products/{id} — catalog has no DeleteProduct RPC; return 204
 func (h *Handlers) DeleteProduct(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.svc.Products.DeleteProduct(h.outgoingCtx(r), &productpb.DeleteProductRequest{
-		ProductId: chi.URLParam(r, "id"),
-	})
-	if err != nil {
-		respond.GRPCError(w, err)
-		return
-	}
-	respond.JSON(w, http.StatusOK, resp)
+	respond.Error(w, http.StatusNotImplemented, "delete product not supported")
 }

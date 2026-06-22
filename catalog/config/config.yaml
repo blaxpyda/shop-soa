@@ -1,0 +1,12 @@
+app:
+  name: catalog-service
+  environment: development
+
+sqlite:
+  path: ""
+
+grpc:
+  port: 50053
+
+jwt:
+  public_key_path: ""

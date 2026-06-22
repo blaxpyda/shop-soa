@@ -3,7 +3,12 @@
     "allow": [
       "Bash(bash -c \"go get github.com/google/uuid\")",
       "Bash(go build *)",
-      "Bash(xargs sed -i 's/golang:1.24-alpine/golang:1.26-alpine/g')"
+      "Bash(xargs sed -i 's/golang:1.24-alpine/golang:1.26-alpine/g')",
+      "Bash(go get *)",
+      "Bash(mkdir -p /home/diesel/Desktop/shop/shop-soa/catalog/internal/domain /home/diesel/Desktop/shop/shop-soa/catalog/internal/middleware /home/diesel/Desktop/shop/shop-soa/catalog/config)"
+    ],
+    "additionalDirectories": [
+      "/home/diesel/Desktop/shop/shop-soa/catalog/internal"
     ]
   }
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -33,12 +34,29 @@ type sendRequest struct {
 	Type string `json:"type"`
 }
 
+// flexString unmarshals both JSON strings and numbers (EasySend returns 0 on success, a string on error).
+type flexString string
+
+func (f *flexString) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*f = flexString(s)
+		return nil
+	}
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err != nil {
+		return err
+	}
+	*f = flexString(n.String())
+	return nil
+}
+
 type sendResponse struct {
-	Status      string   `json:"status"`
-	Scheduled   string   `json:"scheduled"`
-	MessageIDs  []string `json:"messageIds"`
-	Error       string   `json:"error,omitempty"`
-	Description string   `json:"description,omitempty"`
+	Status      string     `json:"status"`
+	Scheduled   string     `json:"scheduled"`
+	MessageIDs  []string   `json:"messageIds"`
+	Error       flexString `json:"error,omitempty"`
+	Description string     `json:"description,omitempty"`
 }
 
 func (e *easySendSMS) SendVerificationCode(to string, code string) error {
@@ -50,13 +68,17 @@ func (e *easySendSMS) SendVerificationCode(to string, code string) error {
 		Type: messageType(text),
 	})
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", sendURL, bytes.NewReader(body))
+	endpoint, _ := url.Parse(sendURL)
+	q := endpoint.Query()
+	q.Set("api_key", e.apiKey)
+	endpoint.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(context.Background(), "POST", endpoint.String(), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+e.apiKey)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := e.http.Do(req)
@@ -70,7 +92,7 @@ func (e *easySendSMS) SendVerificationCode(to string, code string) error {
 		return err
 	}
 
-	if out.Error != "" {
+	if out.Error != "" && out.Error != "0" {
 		return fmt.Errorf("easysend error: %s - %s", out.Error, out.Description)
 	}
 

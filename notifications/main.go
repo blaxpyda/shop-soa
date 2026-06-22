@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
-	"gorm.io/driver/postgres"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"thugcorp.io/grocery/notifications/config"
 	"thugcorp.io/grocery/notifications/internal"
@@ -24,9 +24,9 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	db, err := connectPostgres(cfg)
+	db, err := gorm.Open(sqlite.Open(cfg.SQLLite.Path), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to postgres: %v", err)
+		log.Fatalf("failed to open database: %v", err)
 	}
 
 	if err := db.AutoMigrate(&domain.Notification{}, &domain.NotificationPreference{}); err != nil {
@@ -67,13 +67,4 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-}
-
-func connectPostgres(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.User,
-		cfg.Postgres.Password, cfg.Postgres.DBName, cfg.Postgres.SSLMode,
-	)
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
 }

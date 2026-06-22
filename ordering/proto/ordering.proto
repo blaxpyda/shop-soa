@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package grocery.ordering;
+
+option go_package = "thugcorp.io/grocery/ordering";
+
+import "google/protobuf/timestamp.proto";
+
+// OrderingService merges the cart (pre-order) and orders (committed order).
+// Checkout turns a cart into an order in-process — no network hop — and clearing
+// the cart afterward is just a function call, not a cross-service round trip.
+service OrderingService {
+  // ----- Cart -----
+  rpc GetCart(GetCartRequest) returns (Cart);
+  rpc AddItem(AddItemRequest) returns (Cart);
+  rpc UpdateItem(UpdateItemRequest) returns (Cart);
+  rpc RemoveItem(RemoveItemRequest) returns (Cart);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+
+  // ----- Orders -----
+  rpc Checkout(CheckoutRequest) returns (Order);    // cart -> order
+  rpc GetOrder(GetOrderRequest) returns (Order);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (Order);
+}
+
+// ===================== Cart =====================
+
+message Cart {
+  string user_id = 1;
+  repeated CartItem items = 2;
+  int64 subtotal = 3;     // minor units, computed
+  string currency = 4;
+}
+
+message CartItem {
+  string product_id = 1;
+  string business_id = 2;
+  string name = 3;        // cached for display
+  int64 unit_price = 4;   // cached for display; live catalog price is authoritative
+  int64 quantity = 5;
+}
+
+message GetCartRequest { string user_id = 1; }
+
+message AddItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+  int64 quantity = 3;
+}
+
+message UpdateItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+  int64 quantity = 3;     // 0 removes the line
+}
+
+message RemoveItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+}
+
+message ClearCartRequest { string user_id = 1; }
+message ClearCartResponse { bool cleared = 1; }
+
+// ===================== Orders =====================
+
+message Order {
+  string id = 1;
+  string user_id = 2;
+  repeated OrderItem items = 3;   // each line carries business_id; per-vendor
+                                  // sub-orders can be layered on later if needed
+  OrderStatus status = 4;
+  int64 total = 5;        // minor units
+  string currency = 6;
+  string payment_id = 7;  // set once payment is initiated
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// name + price are SNAPSHOTTED at checkout, so the order stays a correct record
+// even after the catalog price changes.
+message OrderItem {
+  string product_id = 1;
+  string business_id = 2;
+  string product_name = 3;
+  int64 unit_price = 4;   // price at time of sale
+  int64 quantity = 5;
+  int64 line_total = 6;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING_PAYMENT = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_PREPARING = 3;
+  ORDER_STATUS_OUT_FOR_DELIVERY = 4;
+  ORDER_STATUS_DELIVERED = 5;
+  ORDER_STATUS_CANCELLED = 6;
+}
+
+message CheckoutRequest {
+  string user_id = 1;          // whose cart to convert
+  string delivery_address = 2;
+  string payment_method = 3;   // e.g. "mtn_momo", "airtel_money"
+  string idempotency_key = 4;  // avoid double-ordering on retry
+}
+
+message GetOrderRequest { string order_id = 1; }
+
+message ListOrdersRequest {
+  // Filter by customer OR by vendor (a vendor's incoming orders).
+  oneof filter {
+    string user_id = 1;
+    string business_id = 2;
+  }
+  OrderStatus status = 3;      // optional
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListOrdersResponse {
+  repeated Order orders = 1;
+  string next_page_token = 2;
+}
+
+message UpdateOrderStatusRequest {
+  string order_id = 1;
+  OrderStatus status = 2;      // vendor / fulfillment transitions
+}

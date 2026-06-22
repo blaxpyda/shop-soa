@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package grocery.payment;
+
+option go_package = "thugcorp.io/grocery/payment";
+
+import "google/protobuf/timestamp.proto";
+
+// PaymentService merges payment processing (mobile-money charges) with the
+// ledger (the Transactions module) — every payment, refund, commission, and
+// payout writes a ledger entry in the same operation.
+//
+// Mobile money is asynchronous: InitiatePayment returns a PENDING payment, the
+// customer approves on their phone, and the provider confirms via a webhook
+// (HTTP, handled inside the service — not part of this gRPC contract) which
+// flips the status to SUCCEEDED or FAILED.
+service PaymentService {
+  // ----- Payments -----
+  rpc InitiatePayment(InitiatePaymentRequest) returns (Payment);
+  rpc GetPayment(GetPaymentRequest) returns (Payment);
+  rpc Refund(RefundRequest) returns (Payment);   // compensating action in the saga
+
+  // ----- Ledger (Transactions module) -----
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  rpc GetBalance(GetBalanceRequest) returns (Balance);          // what the platform owes a vendor
+  rpc InitiatePayout(InitiatePayoutRequest) returns (Payout);   // disburse to a vendor
+}
+
+enum Provider {
+  PROVIDER_UNSPECIFIED = 0;
+  PROVIDER_MTN_MOMO = 1;
+  PROVIDER_AIRTEL_MONEY = 2;
+}
+
+// ===================== Payments =====================
+
+message Payment {
+  string id = 1;
+  string order_id = 2;
+  string user_id = 3;        // payer
+  int64 amount = 4;          // minor units
+  string currency = 5;       // "UGX"
+  Provider provider = 6;
+  string provider_ref = 7;   // provider's transaction id
+  PaymentStatus status = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_PENDING = 1;     // awaiting customer approval on phone
+  PAYMENT_STATUS_SUCCEEDED = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_REFUNDED = 4;
+}
+
+message InitiatePaymentRequest {
+  string order_id = 1;
+  string user_id = 2;
+  int64 amount = 3;
+  string currency = 4;
+  Provider provider = 5;
+  string phone = 6;          // MSISDN to charge
+  string idempotency_key = 7;
+}
+
+message GetPaymentRequest { string payment_id = 1; }
+
+message RefundRequest {
+  string payment_id = 1;
+  int64 amount = 2;          // 0 = full refund
+  string reason = 3;
+  string idempotency_key = 4;
+}
+
+// ===================== Ledger =====================
+
+// One entry per money movement. type implies direction relative to the account.
+message Transaction {
+  string id = 1;
+  string payment_id = 2;     // the payment this entry relates to ("" for payouts)
+  string business_id = 3;    // the account this entry affects ("" = platform)
+  TransactionType type = 4;
+  int64 amount = 5;          // minor units, always positive
+  string currency = 6;
+  string note = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+enum TransactionType {
+  TRANSACTION_TYPE_UNSPECIFIED = 0;
+  TRANSACTION_TYPE_PAYMENT = 1;     // customer paid in
+  TRANSACTION_TYPE_COMMISSION = 2;  // platform fee withheld
+  TRANSACTION_TYPE_PAYOUT = 3;      // disbursed to a vendor
+  TRANSACTION_TYPE_REFUND = 4;      // returned to a customer
+}
+
+message ListTransactionsRequest {
+  string business_id = 1;    // "" = platform-wide
+  string payment_id = 2;     // optional, entries for one payment
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  string next_page_token = 2;
+}
+
+message GetBalanceRequest { string business_id = 1; }
+
+message Balance {
+  string business_id = 1;
+  int64 amount = 2;          // payable balance owed to the vendor
+  string currency = 3;
+}
+
+// ===================== Payouts =====================
+
+message Payout {
+  string id = 1;
+  string business_id = 2;
+  int64 amount = 3;
+  string currency = 4;
+  Provider provider = 5;
+  string provider_ref = 6;
+  PaymentStatus status = 7;  // reuse: PENDING -> SUCCEEDED / FAILED
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message InitiatePayoutRequest {
+  string business_id = 1;
+  int64 amount = 2;
+  string currency = 3;
+  Provider provider = 4;
+  string phone = 5;          // vendor MSISDN to disburse to
+  string idempotency_key = 6;
+}

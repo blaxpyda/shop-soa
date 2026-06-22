@@ -30,15 +30,12 @@ func main() {
 	}
 
 	svc, err := clients.Dial(clients.Targets{
-		Auth:          env("AUTH_ADDR", "localhost:50051"),
-		Products:      env("PRODUCTS_ADDR", "localhost:50052"),
-		Cart:          env("CART_ADDR", "localhost:50053"),
-		Orders:        env("ORDERS_ADDR", "localhost:50054"),
-		Notifications: env("NOTIFICATIONS_ADDR", "localhost:50055"),
-		Business:      env("BUSINESS_ADDR", "localhost:50056"),
-		Inventory:     env("INVENTORY_ADDR", "localhost:50057"),
-		Transactions:  env("TRANSACTIONS_ADDR", "localhost:50058"),
-		Payments: 	env("PAYMENTS_ADDR", "localhost:50059"),
+		Auth:          env("AUTH_ADDR", "localhost:50052"),
+		Business:      env("BUSINESS_ADDR", "localhost:50053"),
+		Catalog:       env("CATALOG_ADDR", "localhost:50054"),
+		Ordering:      env("ORDERING_ADDR", "localhost:50055"),
+		Payment:       env("PAYMENT_ADDR", "localhost:50056"),
+		Notifications: env("NOTIFICATIONS_ADDR", "localhost:50057"),
 	})
 	if err != nil {
 		log.Fatalf("dial services: %v", err)
@@ -70,7 +67,7 @@ func main() {
 		r.Put("/v1/auth/profile", h.UpdateProfile)
 		r.Put("/v1/auth/password", h.ChangePassword)
 
-		// Products
+		// Products (catalog service)
 		r.Get("/v1/products", h.ListProducts)
 		r.Get("/v1/products/search", h.SearchProducts)
 		r.Get("/v1/products/{id}", h.GetProduct)
@@ -78,13 +75,20 @@ func main() {
 		r.Put("/v1/products/{id}", h.UpdateProduct)
 		r.Delete("/v1/products/{id}", h.DeleteProduct)
 
-		// Cart
+		// Inventory (catalog service)
+		r.Post("/v1/inventory/availability", h.CheckAvailability)
+		r.Get("/v1/inventory/{businessId}", h.ListStock)
+		r.Get("/v1/inventory/{businessId}/{productId}", h.GetStock)
+		r.Post("/v1/inventory/adjust", h.AdjustStock)
+
+		// Cart (ordering service)
 		r.Get("/v1/cart", h.GetCart)
 		r.Post("/v1/cart/items", h.AddToCart)
+		r.Put("/v1/cart/items/{productId}", h.UpdateCartItem)
 		r.Delete("/v1/cart/items/{productId}", h.RemoveFromCart)
 		r.Delete("/v1/cart", h.ClearCart)
 
-		// Orders
+		// Orders (ordering service)
 		r.Post("/v1/orders", h.CreateOrder)
 		r.Get("/v1/orders", h.ListOrders)
 		r.Get("/v1/orders/{id}", h.GetOrder)
@@ -96,12 +100,20 @@ func main() {
 		r.Get("/v1/businesses/{id}", h.GetBusiness)
 		r.Put("/v1/businesses/{id}", h.UpdateBusiness)
 		r.Delete("/v1/businesses/{id}", h.DeleteBusiness)
+		r.Put("/v1/businesses/{id}/users/{userId}", h.AddUserToBusiness)
 
-		// Inventory
-		r.Post("/v1/inventory/availability", h.CheckAvailability)
-		r.Get("/v1/inventory/{businessId}", h.ListStock)
-		r.Get("/v1/inventory/{businessId}/{productId}", h.GetStock)
-		r.Post("/v1/inventory/adjust", h.AdjustStock)
+		// Payments (payment service)
+		r.Post("/v1/payments", h.InitiatePayment)
+		r.Get("/v1/payments/{id}", h.GetPayment)
+		r.Post("/v1/payments/{id}/refund", h.Refund)
+		r.Get("/v1/payments/balance", h.GetBalance)
+		r.Post("/v1/payments/payouts", h.InitiatePayout)
+
+		// Ledger / transactions (payment service)
+		r.Get("/v1/transactions", h.ListTransactions)
+		r.Get("/v1/transactions/{id}", h.GetTransaction)
+		r.Post("/v1/transactions", h.CreateTransaction)
+		r.Put("/v1/transactions/{id}/status", h.UpdateTransactionStatus)
 
 		// Notifications
 		r.Get("/v1/notifications", h.ListNotifications)
@@ -109,12 +121,6 @@ func main() {
 		r.Get("/v1/notifications/unread-count", h.GetUnreadCount)
 		r.Get("/v1/notifications/preferences", h.GetNotificationPreferences)
 		r.Put("/v1/notifications/preferences", h.UpdateNotificationPreferences)
-
-		// Transactions
-		r.Get("/v1/transactions", h.ListTransactions)
-		r.Get("/v1/transactions/{id}", h.GetTransaction)
-		r.Post("/v1/transactions", h.CreateTransaction)
-		r.Put("/v1/transactions/{id}/status", h.UpdateTransactionStatus)
 	})
 
 	srv := &http.Server{

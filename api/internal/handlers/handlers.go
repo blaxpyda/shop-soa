@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"google.golang.org/grpc/metadata"
 	"thugcorp.io/grocery/api/internal/clients"
@@ -17,6 +18,14 @@ type Handlers struct {
 
 func New(svc *clients.Services) *Handlers {
 	return &Handlers{svc: svc}
+}
+
+func pageSize(r *http.Request) int32 {
+	n, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
+	if n <= 0 {
+		return 20
+	}
+	return int32(n)
 }
 
 // outgoingCtx injects the caller's Bearer token into outgoing gRPC metadata.

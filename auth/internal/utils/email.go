@@ -13,21 +13,17 @@ type EmailService interface {
 
 type emailService struct {
 	host     string
-	port     string
+	port     int
 	username string
 	password string
-	from     string
 }
 
-
-
-func NewEmailService() EmailService {
+func NewEmailService(host string, port int, username, password string) EmailService {
 	return &emailService{
-		host:     os.Getenv("EMAIL_HOST"),
-		port:     os.Getenv("EMAIL_PORT"),
-		username: os.Getenv("EMAIL_USER"),
-		password: os.Getenv("EMAIL_PASS"),
-		from:     os.Getenv("EMAIL_FROM"),
+		host:     host,
+		port:     port,
+		username: username,
+		password: password,
 	}
 }
 
@@ -75,9 +71,9 @@ func (e *emailService) SendVerificationCode(to string, code string) error {
 }
 
 func (e *emailService) sendEmail(to string, subject string, body string) error {
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s", e.from, to, subject, body)
+	addr := fmt.Sprintf("%s:%d", e.host, e.port)
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		e.username, to, subject, body)
 	auth := smtp.PlainAuth("", e.username, e.password, e.host)
-	addr := fmt.Sprintf("%s:%s", e.host, e.port)
-
-	return smtp.SendMail(addr, auth, e.from, []string{to}, []byte(msg))
+	return smtp.SendMail(addr, auth, e.username, []string{to}, []byte(msg))
 }

@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type Business struct {
-	ID          string    `gorm:"primaryKey;type:uuid" json:"id"`
+	ID          string    `gorm:"primaryKey" json:"id"`
 	OwnerID     string    `gorm:"not null;index" json:"owner_id"`
 	Name        string    `gorm:"not null" json:"name"`
 	Description string    `json:"description"`

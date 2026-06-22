@@ -4,7 +4,7 @@ import "time"
 
 // Notification is the in-app inbox record persisted to the DB.
 type Notification struct {
-	ID             string    `gorm:"primaryKey;type:uuid"`
+	ID             string    `gorm:"primaryKey"`
 	RecipientID    string    `gorm:"not null;index"`
 	Title          string    `gorm:"not null"`
 	Body           string    `gorm:"not null"`
@@ -17,7 +17,7 @@ type Notification struct {
 
 // NotificationPreference stores per-user, per-category channel opt-ins.
 type NotificationPreference struct {
-	ID        string    `gorm:"primaryKey;type:uuid"`
+	ID        string    `gorm:"primaryKey"`
 	UserID    string    `gorm:"not null;index"`
 	Category  string    `gorm:"not null"` // matches Category enum string
 	Channels  string    `gorm:"type:text"` // JSON-encoded []string of Channel enum strings

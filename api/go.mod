@@ -1,20 +1,17 @@
 module thugcorp.io/grocery/api
 
-go 1.26.2
+go 1.26.4
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	google.golang.org/grpc v1.81.1
-	thugcorp.io/grocery/auth v0.0.0
-	thugcorp.io/grocery/business v0.0.0
-	thugcorp.io/grocery/cart v0.0.0
-	thugcorp.io/grocery/inventory v0.0.0
-	thugcorp.io/grocery/notifications v0.0.0
-	thugcorp.io/grocery/order v0.0.0
-	thugcorp.io/grocery/payment v0.0.0
-	thugcorp.io/grocery/product v0.0.0
-	thugcorp.io/grocery/transaction v0.0.0
+	thugcorp.io/catalog v0.0.0-00010101000000-000000000000
+	thugcorp.io/grocery/auth v0.0.0-00010101000000-000000000000
+	thugcorp.io/grocery/business v0.0.0-00010101000000-000000000000
+	thugcorp.io/grocery/notifications v0.0.0-00010101000000-000000000000
+	thugcorp.io/ordering v0.0.0-00010101000000-000000000000
+	thugcorp.io/payment v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -26,13 +23,10 @@ require (
 )
 
 replace (
+	thugcorp.io/catalog => ../catalog
 	thugcorp.io/grocery/auth => ../auth
 	thugcorp.io/grocery/business => ../business
-	thugcorp.io/grocery/cart => ../cart
-	thugcorp.io/grocery/inventory => ../inventory
 	thugcorp.io/grocery/notifications => ../notifications
-	thugcorp.io/grocery/order => ../orders
-	thugcorp.io/grocery/payment => ../payments
-	thugcorp.io/grocery/product => ../product
-	thugcorp.io/grocery/transaction => ../transactions
+	thugcorp.io/ordering => ../ordering
+	thugcorp.io/payment => ../payment
 )

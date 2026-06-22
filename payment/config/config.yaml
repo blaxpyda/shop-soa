@@ -1,0 +1,12 @@
+app:
+  name: payment-service
+  environment: development
+
+sqlite:
+  path: ./payment.db
+
+grpc:
+  port: 50055
+
+jwt:
+  public_key_path: ../../secrets/jwt_public.pem

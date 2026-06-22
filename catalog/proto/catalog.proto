@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package grocery.catalog;
+option go_package = "thugcorp.io/grocery/catalog";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+// CatalogService merges products (what an item is + its price) and inventory
+// (how many are in stock). Two domains, one service, one database — no gRPC
+// hop between them. product_id (a UUID) identifies both the product and its
+// stock row, so inventory calls don't need business_id passed in.
+service CatalogService {
+  // ----- Products: definitions + price (slow-changing) -----
+  rpc CreateProduct(CreateProductRequest) returns (Product);
+  rpc GetProduct(GetProductRequest) returns (Product);
+  rpc UpdateProduct(UpdateProductRequest) returns (Product);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+
+  // ----- Inventory: counts + checkout saga (fast-changing) -----
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  rpc AdjustStock(AdjustStockRequest) returns (StockItem);
+  rpc Reserve(ReserveRequest) returns (ReserveResponse);
+  rpc CommitReservation(CommitReservationRequest) returns (CommitReservationResponse);
+  rpc ReleaseReservation(ReleaseReservationRequest) returns (ReleaseReservationResponse);
+}
+
+// ===================== Products =====================
+
+message Product {
+  string id = 1;
+  string business_id = 2;
+  string name = 3;
+  string description = 4;
+  string category = 5;
+  int64 price = 6;       // selling price in minor units
+  string currency = 7;   // e.g. "UGX"
+  string image_url = 8;
+  bool active = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message CreateProductRequest {
+  string business_id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  int64 price = 5;
+  string currency = 6;
+  string image_url = 7;
+  int64 initial_stock = 8;   // merge payoff: seeds the StockItem in the same call
+}
+
+message GetProductRequest { string product_id = 1; }
+
+message UpdateProductRequest {
+  string product_id = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  int64 price = 5;
+  bool active = 6;
+}
+
+message ListProductsRequest {
+  string business_id = 1;    // scope to one vendor's catalog
+  bool featured = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListProductsResponse {
+  repeated Product products = 1;
+  string next_page_token = 2;
+}
+
+// ===================== Inventory =====================
+
+message StockItem {
+  string product_id = 1;
+  string business_id = 2;
+  string location_id = 3;    // "" if single-location
+  int64 on_hand = 4;
+  int64 reserved = 5;
+  int64 available = 6;       // derived: on_hand - reserved
+  string version = 7;        // optimistic-concurrency token
+}
+
+message AvailabilityQuery {
+  string product_id = 1;
+  string location_id = 2;
+  int64 quantity = 3;
+}
+message CheckAvailabilityRequest { repeated AvailabilityQuery items = 1; }
+message AvailabilityResult {
+  string product_id = 1;
+  int64 available = 2;
+  bool sufficient = 3;
+}
+message CheckAvailabilityResponse { repeated AvailabilityResult results = 1; }
+
+message AdjustStockRequest {
+  string product_id = 1;
+  string location_id = 2;
+  oneof change {
+    int64 delta = 3;         // +restock / -spoilage
+    int64 set_to = 4;        // physical recount
+  }
+  AdjustmentReason reason = 5;
+  string expected_version = 6;  // optional concurrency check
+  string idempotency_key = 7;
+}
+enum AdjustmentReason {
+  ADJUSTMENT_REASON_UNSPECIFIED = 0;
+  ADJUSTMENT_REASON_RESTOCK = 1;
+  ADJUSTMENT_REASON_SPOILAGE = 2;
+  ADJUSTMENT_REASON_CORRECTION = 3;
+  ADJUSTMENT_REASON_RETURN = 4;
+}
+
+// --- Checkout saga: reserve -> commit -> release ---
+
+message ReserveItem {
+  string product_id = 1;
+  string location_id = 2;
+  int64 quantity = 3;
+}
+message ReserveRequest {
+  string order_id = 1;
+  repeated ReserveItem items = 2;
+  google.protobuf.Duration ttl = 3;     // hold auto-expires if not committed
+  string idempotency_key = 4;
+}
+message ReserveResponse {
+  string reservation_id = 1;
+  bool held = 2;
+  repeated AvailabilityResult shortfalls = 3;   // set when held = false
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message CommitReservationRequest {
+  string reservation_id = 1;
+  string idempotency_key = 2;
+}
+message CommitReservationResponse { bool committed = 1; }
+
+message ReleaseReservationRequest {
+  string reservation_id = 1;
+  string reason = 2;     // "cancelled", "payment_failed", "expired"
+}
+message ReleaseReservationResponse { bool released = 1; }

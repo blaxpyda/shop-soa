@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
 
+	"github.com/glebarez/sqlite"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"thugcorp.io/grocery/auth/config"
 	"thugcorp.io/grocery/auth/internal"
@@ -24,14 +26,16 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	db, err := connectPostgres(cfg)
+	db, err := gorm.Open(sqlite.Open(cfg.SQLLite.Path), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect to postgres: %v", err)
+		log.Fatalf("failed to open database: %v", err)
 	}
 
 	if err := db.AutoMigrate(&domain.User{}); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
+
+	bootstrapSuperAdmin(db, cfg.SuperAdmin)
 
 	privKeyBytes, err := os.ReadFile(cfg.JWT.PrivateKeyPath)
 	if err != nil {
@@ -51,10 +55,11 @@ func main() {
 		log.Fatalf("failed to parse JWT public key: %v", err)
 	}
 
-	sms := utils.NewEasySendSMS(os.Getenv("EASYSEND_API_KEY"), os.Getenv("EASYSEND_SENDER"))
+	sms := utils.NewEasySendSMS(cfg.SMS.APIKey, cfg.SMS.SenderID)
+	email := utils.NewEmailService(cfg.Gmail.Host, cfg.Gmail.Port, cfg.Gmail.Username, cfg.Gmail.Password)
 
 	authRepo := internal.NewAuthRepository(db)
-	authService := internal.NewAuthService(authRepo, sms, privKey, cfg.JWT.AccessTokenTTL)
+	authService := internal.NewAuthService(authRepo, sms, email, privKey, cfg.JWT.AccessTokenTTL)
 	authHandler := internal.NewAuthHandler(authService)
 
 	interceptors := []grpc.UnaryServerInterceptor{
@@ -66,7 +71,7 @@ func main() {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(interceptors...),
 	)
-	pb.RegisterAuthServiceServer(grpcServer, authHandler)
+	pb.RegisterIdentityServiceServer(grpcServer, authHandler)
 
 	addr := fmt.Sprintf(":%d", cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", addr)
@@ -85,15 +90,39 @@ func main() {
 	}
 }
 
-func connectPostgres(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Postgres.Host,
-		cfg.Postgres.Port,
-		cfg.Postgres.User,
-		cfg.Postgres.Password,
-		cfg.Postgres.DBName,
-		cfg.Postgres.SSLMode,
-	)
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func bootstrapSuperAdmin(db *gorm.DB, cfg config.SuperAdminConfig) {
+	if cfg.Email == "" || cfg.Password == "" {
+		log.Println("AUTH_SUPER_ADMIN_EMAIL/PASSWORD not set — skipping super admin bootstrap")
+		return
+	}
+
+	var count int64
+	db.Model(&domain.User{}).Where("role = ?", domain.RoleSuperAdmin).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(cfg.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalf("bootstrap: bcrypt: %v", err)
+	}
+
+	var id string
+	if err := db.Raw("SELECT lower(hex(randomblob(16)))").Scan(&id).Error; err != nil {
+		log.Fatalf("bootstrap: id generation: %v", err)
+	}
+
+	admin := domain.User{
+		ID:         id,
+		Email:      cfg.Email,
+		Password:   string(hashed),
+		FirstName:  cfg.FirstName,
+		LastName:   cfg.LastName,
+		Role:       domain.RoleSuperAdmin,
+		IsVerified: true,
+	}
+	if err := db.WithContext(context.Background()).Create(&admin).Error; err != nil {
+		log.Fatalf("bootstrap: create super admin: %v", err)
+	}
+	log.Printf("super admin bootstrapped: %s", cfg.Email)
 }

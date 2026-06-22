@@ -2,68 +2,64 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"strconv"
+	"strings"
+
+	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	App      AppConfig
-	Postgres PostgresConfig
-	GRPC     GRPCConfig
-	JWT      JWTConfig
+	App      AppConfig      `mapstructure:"app"`
+	SQLLite SQLLiteConfig `mapstructure:"sqlite"`
+	GRPC     GRPCConfig     `mapstructure:"grpc"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
 }
 
 type AppConfig struct {
-	Name        string
-	Environment string
+	Name        string `mapstructure:"name"`
+	Environment string `mapstructure:"environment"`
+	Port        int    `mapstructure:"port"`
+	LogLevel    string `mapstructure:"log_level"`
 }
 
-type PostgresConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+type SQLLiteConfig struct {
+	Path string `mapstructure:"path"`
 }
 
 type GRPCConfig struct {
-	Port int
+	Port int `mapstructure:"port"`
 }
 
 type JWTConfig struct {
-	PublicKeyPath  string
-	AccessTokenTTL int
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	PublicKeyPath  string `mapstructure:"public_key_path"`
+	AccessTokenTTL int    `mapstructure:"access_token_ttl"`
 }
 
 func Load() (*Config, error) {
-	pgPort, _ := strconv.Atoi(os.Getenv("NOTIFICATIONS_POSTGRES_PORT"))
-	grpcPort, _ := strconv.Atoi(os.Getenv("NOTIFICATIONS_GRPC_PORT"))
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./config")
+	viper.AddConfigPath(".")
 
-	cfg := &Config{
-		App: AppConfig{
-			Name:        "notifications-service",
-			Environment: "production",
-		},
-		Postgres: PostgresConfig{
-			Host:     os.Getenv("NOTIFICATIONS_POSTGRES_HOST"),
-			Port:     pgPort,
-			User:     os.Getenv("NOTIFICATIONS_POSTGRES_USER"),
-			Password: os.Getenv("NOTIFICATIONS_POSTGRES_PASSWORD"),
-			DBName:   os.Getenv("NOTIFICATIONS_POSTGRES_DBNAME"),
-			SSLMode:  os.Getenv("NOTIFICATIONS_POSTGRES_SSLMODE"),
-		},
-		GRPC: GRPCConfig{
-			Port: grpcPort,
-		},
-		JWT: JWTConfig{
-			PublicKeyPath: os.Getenv("NOTIFICATIONS_JWT_PUBLIC_KEY_PATH"),
-		},
+	_ = godotenv.Load()
+
+	viper.SetEnvPrefix("NOTIFICATIONS")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	if cfg.Postgres.Host == "" {
-		return nil, fmt.Errorf("NOTIFICATIONS_POSTGRES_HOST is required")
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	return cfg, nil
+	if cfg.SQLLite.Path == "" {
+		return nil, fmt.Errorf("sqlite.path is required")
+	}
+
+	return &cfg, nil
 }

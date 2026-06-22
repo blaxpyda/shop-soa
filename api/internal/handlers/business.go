@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	businesspb "thugcorp.io/grocery/business/proto"
 	"thugcorp.io/grocery/api/internal/respond"
+	authpb "thugcorp.io/grocery/auth/proto"
+	businesspb "thugcorp.io/grocery/business/proto"
 )
 
 // POST /v1/businesses
@@ -80,6 +81,19 @@ func (h *Handlers) UpdateBusiness(w http.ResponseWriter, r *http.Request) {
 		City:        body.City,
 		Country:     body.Country,
 		IsActive:    body.IsActive,
+	})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+	respond.JSON(w, http.StatusOK, resp)
+}
+
+// PUT /v1/businesses/{id}/users/{userId}
+func (h *Handlers) AddUserToBusiness(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.svc.Auth.UpdateUser(h.outgoingCtx(r), &authpb.UpdateUserRequest{
+		UserId:     chi.URLParam(r, "userId"),
+		BusinessId: chi.URLParam(r, "id"),
 	})
 	if err != nil {
 		respond.GRPCError(w, err)

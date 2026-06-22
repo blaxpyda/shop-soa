@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v3.21.12
-// source: business/proto/business.proto
+// source: business.proto
 
-package business
+package proto
 
 import (
 	context "context"
@@ -231,5 +231,5 @@ var BusinessService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "business/proto/business.proto",
+	Metadata: "business.proto",
 }

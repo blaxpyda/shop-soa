@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package grocery.business;
-option go_package = "github.com/blaxpyda/grocery/proto/business";
+option go_package = "thugcorp.io/grocery/business/proto";
 
 // ==========================================
 // SERVICE DEFINITION
@@ -29,8 +29,6 @@ message Business {
   string city        = 8;
   string country     = 9;
   bool   is_active   = 10;
-  string created_at  = 11;
-  string updated_at  = 12;
 }
 
 // ==========================================

@@ -9,7 +9,7 @@ const (
 )
 
 type User struct {
-	ID               string    `gorm:"primaryKey;type:uuid" json:"id"`
+	ID               string    `gorm:"primaryKey" json:"id"`
 	Email            string    `gorm:"uniqueIndex:idx_users_email,where:email <> ''" json:"email"`
 	Phone            string    `gorm:"uniqueIndex:idx_users_phone,where:phone <> ''" json:"phone"`
 	Password         string    `gorm:"not null" json:"password"`

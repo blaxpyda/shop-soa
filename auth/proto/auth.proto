@@ -13,6 +13,7 @@ service IdentityService {
   rpc Login(LoginRequest) returns (AuthResponse);
   rpc VerifyCode(VerifyCodeRequest) returns (AuthResponse);
   rpc ResendCode(ResendCodeRequest) returns (EmptyResponse);
+  rpc ForgotPassWord(ForgotPassWordRequest) returns (EmptyResponse);
 
   // --- 2. Self-Service Profile (JWT REQUIRED) ---
   // Note: user_id is intentionally omitted. The server extracts it from the JWT context!
@@ -41,17 +42,23 @@ message SignupRequest {
 }
 
 message LoginRequest {
-  string identifier = 1; // Client can send EITHER email or phone here
-  string password = 2;
+  string email = 1;
+  string phone = 2;
+  string password = 3;
 }
 
 message VerifyCodeRequest {
-  string identifier = 1; // Email or phone used during signup
+  string user_id = 1;
   string code = 2;
 }
 
 message ResendCodeRequest {
-  string identifier = 1; // Email or phone
+  string user_id = 1;
+}
+
+message ForgotPassWordRequest {
+  string email = 1;
+  string phone = 2;
 }
 
 message AuthResponse {
@@ -60,7 +67,7 @@ message AuthResponse {
   string refresh_token = 3;
   bool needs_verify = 4;
   string verify_method = 5;            
-  string error_message = 6; // Renamed from 'error' to avoid reserved keyword issues
+  string error_message = 6;
 }
 
 // ==========================================
@@ -77,10 +84,7 @@ message User {
   string role = 6;
   string business_id = 7;        
   string address = 8;
-  string city = 9;
   string country = 10;
-  string created_at = 11;
-  string updated_at = 12;
 }
 
 // ==========================================

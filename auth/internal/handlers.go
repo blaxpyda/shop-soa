@@ -5,13 +5,13 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	pb "thugcorp.io/grocery/auth/proto"
 	"thugcorp.io/grocery/auth/internal/domain"
 	"thugcorp.io/grocery/auth/internal/middleware"
+	pb "thugcorp.io/grocery/auth/proto"
 )
 
 type authHandler struct {
-	pb.UnimplementedAuthServiceServer
+	pb.UnimplementedIdentityServiceServer
 	authService AuthService
 }
 
@@ -23,9 +23,9 @@ func NewAuthHandler(authService AuthService) *authHandler {
 
 func (h *authHandler) Signup(ctx context.Context, req *pb.SignupRequest) (*pb.AuthResponse, error) {
 	input := domain.CreateUserInput{
-		Email:     req.Email,
-		Phone:     req.Phone,
-		Password:  req.Password,
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Password: req.Password,
 	}
 
 	user, needsVerify, verifyMethod, err := h.authService.Signup(ctx, input)
@@ -87,7 +87,7 @@ func (h *authHandler) ResendCode(ctx context.Context, req *pb.ResendCodeRequest)
 
 // ---- Self-service (JWT required, user acts on own account) ----
 
-func (h *authHandler) GetProfile(ctx context.Context, req *pb.GetProfileRequest) (*pb.ProfileResponse, error) {
+func (h *authHandler) GetProfile(ctx context.Context, req *pb.GetProfileRequest) (*pb.User, error) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (h *authHandler) GetProfile(ctx context.Context, req *pb.GetProfileRequest)
 	return mapToProfileResponse(user), nil
 }
 
-func (h *authHandler) UpdateProfile(ctx context.Context, req *pb.UpdateProfileRequest) (*pb.ProfileResponse, error) {
+func (h *authHandler) UpdateProfile(ctx context.Context, req *pb.UpdateProfileRequest) (*pb.User, error) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -145,35 +145,25 @@ func (h *authHandler) ChangePassword(ctx context.Context, req *pb.ChangePassword
 	return &pb.EmptyResponse{Success: true}, nil
 }
 
+func (h *authHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
+	filter := domain.ListUsersFilter{
+		Page:       int(req.Page),
+		PageSize:   int(req.PageSize),
+		Role:       req.Role,
+		BusinessID: req.BusinessId,
+	}
 
-// func (h *authHandler) ForgotPassword(ctx context.Context, req *pb.ForgotPasswordRequest) (*pb.EmptyResponse, error) {
-// 	if err := h.authService.ForgotPassword(ctx, req.EmailOrPhone); err != nil {
-// 		return nil, status.Errorf(codes.Internal, "failed to process forgot password request: %v", err)
-// 	}
-// 	return &pb.EmptyResponse{Success: true}, nil
-// }
+	users, err := h.authService.ListUsers(ctx, filter)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list users: %v", err)
+	}
 
-// func (h *authHandler) CreateUser(ctx context.Context, req *pb.CreateUserInput) (*pb.ProfileResponse, error) {
-// 	callerRole, ok := ctx.Value(middleware.UserRoleKey).(string)
-// 	if !ok || callerRole == "" {
-// 		return nil, status.Errorf(codes.Unauthenticated, "user role not found in context")
-// 	}
-
-// 	input := domain.CreateUserInput{
-// 		Email:     req.Email,
-// 		Phone:     req.Phone,
-// 		Password:  req.Password,
-// 		FirstName: req.FirstName,
-// 		LastName:  req.LastName,
-// 	}
-
-// 	user, err := h.authService.CreateUser(ctx, callerRole, input)
-// 	if err != nil {
-// 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
-// 	}
-
-// 	return mapToProfileResponse(user), nil
-// }
+	resp := &pb.ListUsersResponse{}
+	for _, user := range users {
+		resp.Users = append(resp.Users, mapToProfileResponse(user))
+	}
+	return resp, nil
+}
 
 // ---- Helpers ----
 
@@ -185,18 +175,15 @@ func userIDFromCtx(ctx context.Context) (string, error) {
 	return userID, nil
 }
 
-func mapToProfileResponse(user *domain.User) *pb.ProfileResponse {
-	return &pb.ProfileResponse{
+func mapToProfileResponse(user *domain.User) *pb.User {
+	return &pb.User{
 		Id:        user.ID,
 		Email:     user.Email,
 		Phone:     user.Phone,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Address:   user.Address,
-		City:      user.City,
 		Country:   user.Country,
 		Role:      user.Role,
-		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
