@@ -3,7 +3,7 @@ package domain
 import "time"
 
 const (
-	RoleSuperAdmin = "superadmin"
+	RoleSuperAdmin = "super-admin"
 	RoleAdmin      = "admin"
 	RoleUser       = "user"
 )

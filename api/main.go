@@ -62,13 +62,6 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(auth)
 
-		// Admin / user management
-		r.Post("/v1/admin/user", h.CreateUser)
-		r.Get("/v1/admin/users", h.ListUsers)
-		r.Patch("/v1/admin/users/{id}/role", h.UpdateUserRole)
-		r.Post("/v1/admin/users", h.AdminCreateUser)
-		r.Post("/v1/admin/businesses", h.CreateAdminBusiness)
-
 		// Auth / profile
 		r.Get("/v1/auth/profile", h.GetProfile)
 		r.Put("/v1/auth/profile", h.UpdateProfile)

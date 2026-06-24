@@ -25,7 +25,6 @@ type AuthService interface {
 	ForgotPassword(ctx context.Context, emailOrPhone string) error
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	CreateUser(ctx context.Context, callerRole string, input domain.CreateUserInput) (*domain.User, error)
-	UpdateUser(ctx context.Context, callerRole, callerID, targetUserID string, input domain.UpdateUserInput) (*domain.User, error)
 	ListUsers(ctx context.Context, filter domain.ListUsersFilter) ([]*domain.User, error)
 }
 
@@ -122,14 +121,7 @@ func (s *authService) Login(ctx context.Context, email, phone, password string) 
 		return nil, "", errors.New("email or phone number is required")
 	}
 
-	var emailPtr, phonePtr *string
-	if email != "" {
-		emailPtr = &email
-	}
-	if phone != "" {
-		phonePtr = &phone
-	}
-	user, err := s.authRepository.GetUserByEmailOrPhone(ctx, emailPtr, phonePtr)
+	user, err := s.authRepository.GetUserByEmailOrPhone(ctx, &email, &phone)
 	if err != nil {
 		return nil, "", err
 	}
@@ -285,34 +277,17 @@ func (s *authService) ChangePassword(ctx context.Context, userID, currentPasswor
 	return s.authRepository.UpdatePassword(ctx, userID, string(hashed))
 }
 
-// ---- Admin operations ----
+// ---- Admin operations (super-admin only for CreateUser) ----
 
 func (s *authService) CreateUser(ctx context.Context, callerRole string, input domain.CreateUserInput) (*domain.User, error) {
-	switch callerRole {
-	case domain.RoleSuperAdmin:
-		if input.Role == "" {
-			input.Role = domain.RoleUser
-		}
-	case domain.RoleAdmin:
-		if input.BusinessID == "" {
-			return nil, errors.New("business_id is required")
-		}
-		if input.Role == domain.RoleSuperAdmin || input.Role == domain.RoleAdmin {
-			return nil, errors.New("admins cannot create users with elevated roles")
-		}
-		input.Role = domain.RoleUser
-	default:
+	if callerRole != domain.RoleSuperAdmin {
 		return nil, errors.New("only super-admin can create users")
 	}
+	if input.Role == "" {
+		input.Role = domain.RoleUser
+	}
 
-	var emailPtr, phonePtr *string
-	if input.Email != "" {
-		emailPtr = &input.Email
-	}
-	if input.Phone != "" {
-		phonePtr = &input.Phone
-	}
-	existing, err := s.authRepository.GetUserByEmailOrPhone(ctx, emailPtr, phonePtr)
+	existing, err := s.authRepository.GetUserByEmailOrPhone(ctx, &input.Email, &input.Phone)
 	if err != nil {
 		return nil, err
 	}
@@ -337,17 +312,6 @@ func (s *authService) CreateUser(ctx context.Context, callerRole string, input d
 	}
 	user.IsVerified = true
 	return user, nil
-}
-
-func (s *authService) UpdateUser(ctx context.Context, callerRole, callerID, targetUserID string, input domain.UpdateUserInput) (*domain.User, error) {
-	if callerRole == domain.RoleSuperAdmin {
-		return s.authRepository.UpdateUser(ctx, targetUserID, input)
-	}
-	// Admins may only link themselves to a business (e.g. after CreateBusiness).
-	if callerRole == domain.RoleAdmin && callerID == targetUserID && input.BusinessID != "" && input.Role == "" {
-		return s.authRepository.UpdateUser(ctx, targetUserID, domain.UpdateUserInput{BusinessID: input.BusinessID})
-	}
-	return nil, errors.New("only super-admin can update users")
 }
 
 func (s *authService) ListUsers(ctx context.Context, filter domain.ListUsersFilter) ([]*domain.User, error) {

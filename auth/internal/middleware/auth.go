@@ -31,10 +31,10 @@ type CustomClaims struct {
 
 // publicMethods are RPCs that do not require a JWT.
 var publicMethods = map[string]bool{
-	"/grocery.identity.IdentityService/Signup":     true,
-	"/grocery.identity.IdentityService/Login":      true,
-	"/grocery.identity.IdentityService/VerifyCode": true,
-	"/grocery.identity.IdentityService/ResendCode": true,
+	"/grocery.auth.AuthService/Signup":     true,
+	"/grocery.auth.AuthService/Login":      true,
+	"/grocery.auth.AuthService/VerifyCode": true,
+	"/grocery.auth.AuthService/ResendCode": true,
 }
 
 func AuthInterceptor(publicKey *rsa.PublicKey) grpc.UnaryServerInterceptor {

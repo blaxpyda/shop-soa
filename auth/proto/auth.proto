@@ -63,13 +63,11 @@ message ForgotPassWordRequest {
 
 message AuthResponse {
   string user_id = 1;
-  string token = 2;
+  string token = 2;                    
   string refresh_token = 3;
   bool needs_verify = 4;
-  string verify_method = 5;
+  string verify_method = 5;            
   string error_message = 6;
-  string role = 7;
-  string business_id = 8;
 }
 
 // ==========================================

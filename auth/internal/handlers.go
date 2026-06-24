@@ -61,10 +61,8 @@ func (h *authHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Auth
 	}
 
 	return &pb.AuthResponse{
-		UserId:     user.ID,
-		Token:      token,
-		Role:       user.Role,
-		BusinessId: user.BusinessID,
+		UserId: user.ID,
+		Token:  token,
 	}, nil
 }
 
@@ -75,10 +73,8 @@ func (h *authHandler) VerifyCode(ctx context.Context, req *pb.VerifyCodeRequest)
 	}
 
 	return &pb.AuthResponse{
-		UserId:     user.ID,
-		Token:      token,
-		Role:       user.Role,
-		BusinessId: user.BusinessID,
+		UserId: user.ID,
+		Token:  token,
 	}, nil
 }
 
@@ -147,52 +143,6 @@ func (h *authHandler) ChangePassword(ctx context.Context, req *pb.ChangePassword
 	}
 
 	return &pb.EmptyResponse{Success: true}, nil
-}
-
-func (h *authHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.User, error) {
-	callerRole, _ := ctx.Value(middleware.RoleKey).(string)
-	input := domain.CreateUserInput{
-		Email:      req.Email,
-		Phone:      req.Phone,
-		Password:   req.Password,
-		FirstName:  req.FirstName,
-		LastName:   req.LastName,
-		Role:       req.Role,
-		BusinessID: req.BusinessId,
-	}
-	user, err := h.authService.CreateUser(ctx, callerRole, input)
-	if err != nil {
-		switch err.Error() {
-		case "only super-admin can create users", "admins cannot create users with elevated roles":
-			return nil, status.Errorf(codes.PermissionDenied, "%v", err)
-		case "business_id is required":
-			return nil, status.Errorf(codes.InvalidArgument, "%v", err)
-		default:
-			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
-		}
-	}
-	return mapToProfileResponse(user), nil
-}
-
-func (h *authHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.User, error) {
-	callerRole, _ := ctx.Value(middleware.RoleKey).(string)
-	callerID, _ := ctx.Value(middleware.UserIDKey).(string)
-	input := domain.UpdateUserInput{
-		FirstName:  req.FirstName,
-		LastName:   req.LastName,
-		Email:      req.Email,
-		Phone:      req.Phone,
-		Role:       req.Role,
-		BusinessID: req.BusinessId,
-	}
-	user, err := h.authService.UpdateUser(ctx, callerRole, callerID, req.UserId, input)
-	if err != nil {
-		if err.Error() == "only super-admin can update users" {
-			return nil, status.Errorf(codes.PermissionDenied, "%v", err)
-		}
-		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
-	}
-	return mapToProfileResponse(user), nil
 }
 
 func (h *authHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
