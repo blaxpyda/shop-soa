@@ -5,10 +5,50 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"thugcorp.io/grocery/api/internal/middleware"
 	"thugcorp.io/grocery/api/internal/respond"
 	authpb "thugcorp.io/grocery/auth/proto"
 	businesspb "thugcorp.io/grocery/business/proto"
 )
+
+// POST /v1/admin/businesses — creates a business and links the calling admin to it.
+func (h *Handlers) CreateAdminBusiness(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name    string `json:"name"`
+		Address string `json:"address"`
+		Phone   string `json:"phone"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.Name == "" {
+		respond.Error(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	callerID, _, _, _ := middleware.ClaimsFromCtx(r.Context())
+
+	biz, err := h.svc.Business.CreateBusiness(h.outgoingCtx(r), &businesspb.CreateBusinessRequest{
+		Name:    body.Name,
+		Address: body.Address,
+		Phone:   body.Phone,
+	})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+
+	if _, err := h.svc.Auth.UpdateUser(h.outgoingCtx(r), &authpb.UpdateUserRequest{
+		UserId:     callerID,
+		BusinessId: biz.Id,
+	}); err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+
+	respond.JSON(w, http.StatusCreated, biz)
+}
 
 // POST /v1/businesses
 func (h *Handlers) CreateBusiness(w http.ResponseWriter, r *http.Request) {
