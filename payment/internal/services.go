@@ -39,7 +39,7 @@ func (s *paymentService) InitiatePayment(input domain.InitiatePaymentInput) (*do
 	if input.Currency == "" {
 		return nil, fmt.Errorf("currency is required")
 	}
-	if input.Phone == "" {
+	if input.Provider != domain.ProviderCash && input.Phone == "" {
 		return nil, fmt.Errorf("phone is required")
 	}
 	if input.IdempotencyKey == "" {
@@ -50,6 +50,10 @@ func (s *paymentService) InitiatePayment(input domain.InitiatePaymentInput) (*do
 		return nil, err
 	} else if existing != nil {
 		return existing, nil
+	}
+
+	if input.Provider == domain.ProviderCash {
+		return s.initiateCashPayment(input)
 	}
 
 	p := &domain.Payment{
@@ -64,6 +68,37 @@ func (s *paymentService) InitiatePayment(input domain.InitiatePaymentInput) (*do
 		IdempotencyKey: input.IdempotencyKey,
 	}
 	if err := s.repo.CreatePayment(p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (s *paymentService) initiateCashPayment(input domain.InitiatePaymentInput) (*domain.Payment, error) {
+	p := &domain.Payment{
+		ID:             newID(),
+		OrderID:        input.OrderID,
+		UserID:         input.UserID,
+		Amount:         input.Amount,
+		Currency:       input.Currency,
+		Provider:       domain.ProviderCash,
+		ProviderRef:    "CASH-" + newID(),
+		Status:         domain.PaymentStatusSucceeded,
+		IdempotencyKey: input.IdempotencyKey,
+	}
+	if err := s.repo.CreatePayment(p); err != nil {
+		return nil, err
+	}
+
+	txn := &domain.Transaction{
+		ID:        newID(),
+		PaymentID: p.ID,
+		Type:      domain.TransactionTypePayment,
+		Amount:    p.Amount,
+		Currency:  p.Currency,
+		Note:      fmt.Sprintf("cash payment for order %s", p.OrderID),
+		CreatedAt: time.Now(),
+	}
+	if err := s.repo.CreateTransaction(txn); err != nil {
 		return nil, err
 	}
 	return p, nil

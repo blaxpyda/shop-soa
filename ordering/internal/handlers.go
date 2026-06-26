@@ -136,8 +136,11 @@ func (h *orderingHandler) ListOrders(ctx context.Context, req *pb.ListOrdersRequ
 	case *pb.ListOrdersRequest_BusinessId:
 		filter.BusinessID = f.BusinessId
 	default:
-		// Fall back to the calling user's own orders.
-		filter.UserID = userIDFromCtx(ctx)
+		if roleFromCtx(ctx) == "super-admin" {
+			filter.AllOrders = true
+		} else {
+			filter.UserID = userIDFromCtx(ctx)
+		}
 	}
 
 	orders, err := h.svc.ListOrders(ctx, filter)
@@ -178,6 +181,11 @@ func (h *orderingHandler) UpdateOrderStatus(ctx context.Context, req *pb.UpdateO
 func userIDFromCtx(ctx context.Context) string {
 	uid, _ := ctx.Value(middleware.UserIDKey).(string)
 	return uid
+}
+
+func roleFromCtx(ctx context.Context) string {
+	role, _ := ctx.Value(middleware.RoleKey).(string)
+	return role
 }
 
 func mapCart(c *domain.Cart) *pb.Cart {

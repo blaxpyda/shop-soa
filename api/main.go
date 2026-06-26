@@ -76,6 +76,7 @@ func main() {
 		r.Delete("/v1/products/{id}", h.DeleteProduct)
 
 		// Inventory (catalog service)
+		r.Get("/v1/inventory/low-stock-count", h.LowStockCount)
 		r.Post("/v1/inventory/availability", h.CheckAvailability)
 		r.Get("/v1/inventory/{businessId}", h.ListStock)
 		r.Get("/v1/inventory/{businessId}/{productId}", h.GetStock)
@@ -95,12 +96,28 @@ func main() {
 		r.Put("/v1/orders/{id}/status", h.UpdateOrderStatus)
 		r.Post("/v1/orders/{id}/cancel", h.CancelOrder)
 
+		// User management (super-admin)
+		r.Get("/v1/admin/users", h.ListUsers)
+		r.Post("/v1/admin/user", h.CreateUser)
+		r.Patch("/v1/admin/users/{userId}/role", h.UpdateUserRole)
+
+		// POS sales
+		r.Post("/v1/sales", h.ConfirmSale)
+
+		// Uploads
+		r.Post("/v1/uploads/presign", h.PresignUpload)
+
+		// Stats
+		r.Get("/v1/stats", h.GetStats)
+		r.Get("/v1/my/stats", h.GetMyStats)
+		r.Get("/v1/system/stats", h.GetSystemStats)
+
 		// Business
 		r.Post("/v1/businesses", h.CreateBusiness)
 		r.Get("/v1/businesses/{id}", h.GetBusiness)
 		r.Put("/v1/businesses/{id}", h.UpdateBusiness)
 		r.Delete("/v1/businesses/{id}", h.DeleteBusiness)
-		r.Put("/v1/businesses/{id}/users/{userId}", h.AddUserToBusiness)
+		r.Put("/v1/businesses/{id}/users", h.AddUserToBusiness)
 
 		// Payments (payment service)
 		r.Post("/v1/payments", h.InitiatePayment)

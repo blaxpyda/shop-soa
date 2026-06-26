@@ -74,5 +74,5 @@ func (s *businessService) DeleteBusiness(ctx context.Context, callerID, callerRo
 }
 
 func isOwner(callerID, callerRole, ownerID string) bool {
-	return callerID == ownerID || callerRole == "admin" 
+	return callerID == ownerID || callerRole == "super-admin"
 }

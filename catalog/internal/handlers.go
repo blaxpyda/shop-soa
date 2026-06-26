@@ -35,6 +35,7 @@ func (h *catalogHandler) CreateProduct(ctx context.Context, req *pb.CreateProduc
 		Description:  req.Description,
 		Category:     req.Category,
 		Price:        req.Price,
+		CostPrice:    req.CostPrice,
 		Currency:     req.Currency,
 		ImageURL:     req.ImageUrl,
 		InitialStock: req.InitialStock,
@@ -66,6 +67,7 @@ func (h *catalogHandler) UpdateProduct(ctx context.Context, req *pb.UpdateProduc
 		Description: req.Description,
 		Category:    req.Category,
 		Price:       req.Price,
+		CostPrice:   req.CostPrice,
 		Active:      &active,
 	}
 
@@ -86,6 +88,7 @@ func (h *catalogHandler) ListProducts(ctx context.Context, req *pb.ListProductsR
 	pageSize := int(req.PageSize)
 	filter := domain.ListProductsFilter{
 		BusinessID: req.BusinessId,
+		Query:      req.Query,
 		PageSize:   pageSize,
 		PageToken:  req.PageToken,
 	}
@@ -149,6 +152,7 @@ func (h *catalogHandler) AdjustStock(ctx context.Context, req *pb.AdjustStockReq
 		Reason:          req.Reason.String(),
 		ExpectedVersion: req.ExpectedVersion,
 		IdempotencyKey:  req.IdempotencyKey,
+		UnitCost:        req.UnitCost,
 	}
 
 	switch c := req.Change.(type) {
@@ -241,6 +245,7 @@ func mapProduct(p *domain.Product) *pb.Product {
 		Description: p.Description,
 		Category:    p.Category,
 		Price:       p.Price,
+		CostPrice:   p.CostPrice,
 		Currency:    p.Currency,
 		ImageUrl:    p.ImageURL,
 		Active:      p.Active,
@@ -252,7 +257,6 @@ func mapStockItem(s *domain.StockItem) *pb.StockItem {
 	return &pb.StockItem{
 		ProductId:  s.ProductID,
 		BusinessId: s.BusinessID,
-		LocationId: s.LocationID,
 		OnHand:     s.OnHand,
 		Reserved:   s.Reserved,
 		Available:  s.Available(),

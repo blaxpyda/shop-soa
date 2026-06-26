@@ -119,14 +119,16 @@ func (r *orderingRepository) GetOrderByIdempotencyKey(ctx context.Context, key s
 func (r *orderingRepository) ListOrders(ctx context.Context, filter domain.ListOrdersFilter) ([]*domain.Order, error) {
 	query := r.db.WithContext(ctx).Model(&domain.Order{})
 
-	switch {
-	case filter.UserID != "":
-		query = query.Where("user_id = ?", filter.UserID)
-	case filter.BusinessID != "":
-		subquery := r.db.Model(&domain.OrderItem{}).
-			Select("order_id").
-			Where("business_id = ?", filter.BusinessID)
-		query = query.Where("id IN (?)", subquery)
+	if !filter.AllOrders {
+		switch {
+		case filter.UserID != "":
+			query = query.Where("user_id = ?", filter.UserID)
+		case filter.BusinessID != "":
+			subquery := r.db.Model(&domain.OrderItem{}).
+				Select("order_id").
+				Where("business_id = ?", filter.BusinessID)
+			query = query.Where("id IN (?)", subquery)
+		}
 	}
 
 	if filter.Status != "" && filter.Status != domain.OrderStatusUnspecified {
@@ -134,8 +136,12 @@ func (r *orderingRepository) ListOrders(ctx context.Context, filter domain.ListO
 	}
 
 	pageSize := filter.PageSize
-	if pageSize <= 0 || pageSize > 100 {
-		pageSize = 20
+	maxPageSize := 100
+	if filter.AllOrders {
+		maxPageSize = 1000
+	}
+	if pageSize <= 0 || pageSize > maxPageSize {
+		pageSize = maxPageSize
 	}
 	if filter.PageToken != "" {
 		if offset, err := strconv.Atoi(filter.PageToken); err == nil && offset > 0 {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"thugcorp.io/grocery/api/internal/middleware"
 	"thugcorp.io/grocery/api/internal/respond"
 	authpb "thugcorp.io/grocery/auth/proto"
 	businesspb "thugcorp.io/grocery/business/proto"
@@ -39,6 +40,17 @@ func (h *Handlers) CreateBusiness(w http.ResponseWriter, r *http.Request) {
 		respond.GRPCError(w, err)
 		return
 	}
+
+	// Stamp the new business ID onto the owner's user record so their next
+	// login JWT includes the correct business_id claim.
+	callerID, _, _, _ := middleware.ClaimsFromCtx(r.Context())
+	if _, err := h.svc.Auth.UpdateUser(h.outgoingCtx(r), &authpb.UpdateUserRequest{
+		UserId:     callerID,
+		BusinessId: resp.Id,
+	}); err != nil {
+		// Non-fatal: business was created; log and continue.
+	}
+
 	respond.JSON(w, http.StatusCreated, resp)
 }
 
@@ -89,11 +101,56 @@ func (h *Handlers) UpdateBusiness(w http.ResponseWriter, r *http.Request) {
 	respond.JSON(w, http.StatusOK, resp)
 }
 
-// PUT /v1/businesses/{id}/users/{userId}
+// PUT /v1/businesses/{id}/users
 func (h *Handlers) AddUserToBusiness(w http.ResponseWriter, r *http.Request) {
+	businessID := chi.URLParam(r, "id")
+	callerID, callerRole, _, _ := middleware.ClaimsFromCtx(r.Context())
+
+	biz, err := h.svc.Business.GetBusiness(h.outgoingCtx(r), &businesspb.GetBusinessRequest{BusinessId: businessID})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+
+	if callerRole != "super-admin" && callerID != biz.OwnerId {
+		respond.Error(w, http.StatusForbidden, "forbidden: you do not own this business")
+		return
+	}
+
+	var body struct {
+		Email string `json:"email"`
+		Phone string `json:"phone"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		respond.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if body.Email == "" && body.Phone == "" {
+		respond.Error(w, http.StatusBadRequest, "email or phone is required")
+		return
+	}
+
+	// Resolve the user ID by matching email or phone against registered accounts.
+	users, err := h.svc.Auth.ListUsers(h.outgoingCtx(r), &authpb.ListUsersRequest{Page: 1, PageSize: 200})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+	var userID string
+	for _, u := range users.Users {
+		if (body.Email != "" && u.Email == body.Email) || (body.Phone != "" && u.Phone == body.Phone) {
+			userID = u.Id
+			break
+		}
+	}
+	if userID == "" {
+		respond.Error(w, http.StatusNotFound, "no account found with that email or phone")
+		return
+	}
+
 	resp, err := h.svc.Auth.UpdateUser(h.outgoingCtx(r), &authpb.UpdateUserRequest{
-		UserId:     chi.URLParam(r, "userId"),
-		BusinessId: chi.URLParam(r, "id"),
+		UserId:     userID,
+		BusinessId: businessID,
 	})
 	if err != nil {
 		respond.GRPCError(w, err)

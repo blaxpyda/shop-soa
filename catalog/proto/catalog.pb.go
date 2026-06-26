@@ -90,6 +90,7 @@ type Product struct {
 	ImageUrl      string                 `protobuf:"bytes,8,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	Active        bool                   `protobuf:"varint,9,opt,name=active,proto3" json:"active,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CostPrice     int64                  `protobuf:"varint,11,opt,name=cost_price,json=costPrice,proto3" json:"cost_price,omitempty"` // purchase/cost price in minor units
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -194,6 +195,13 @@ func (x *Product) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Product) GetCostPrice() int64 {
+	if x != nil {
+		return x.CostPrice
+	}
+	return 0
+}
+
 type CreateProductRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BusinessId    string                 `protobuf:"bytes,1,opt,name=business_id,json=businessId,proto3" json:"business_id,omitempty"`
@@ -204,6 +212,7 @@ type CreateProductRequest struct {
 	Currency      string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
 	ImageUrl      string                 `protobuf:"bytes,7,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	InitialStock  int64                  `protobuf:"varint,8,opt,name=initial_stock,json=initialStock,proto3" json:"initial_stock,omitempty"` // merge payoff: seeds the StockItem in the same call
+	CostPrice     int64                  `protobuf:"varint,9,opt,name=cost_price,json=costPrice,proto3" json:"cost_price,omitempty"`            // purchase/cost price in minor units
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -294,6 +303,13 @@ func (x *CreateProductRequest) GetInitialStock() int64 {
 	return 0
 }
 
+func (x *CreateProductRequest) GetCostPrice() int64 {
+	if x != nil {
+		return x.CostPrice
+	}
+	return 0
+}
+
 type GetProductRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProductId     string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
@@ -346,6 +362,7 @@ type UpdateProductRequest struct {
 	Category      string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
 	Price         int64                  `protobuf:"varint,5,opt,name=price,proto3" json:"price,omitempty"`
 	Active        bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
+	CostPrice     int64                  `protobuf:"varint,7,opt,name=cost_price,json=costPrice,proto3" json:"cost_price,omitempty"` // purchase/cost price in minor units
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -422,12 +439,20 @@ func (x *UpdateProductRequest) GetActive() bool {
 	return false
 }
 
+func (x *UpdateProductRequest) GetCostPrice() int64 {
+	if x != nil {
+		return x.CostPrice
+	}
+	return 0
+}
+
 type ListProductsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BusinessId    string                 `protobuf:"bytes,1,opt,name=business_id,json=businessId,proto3" json:"business_id,omitempty"` // scope to one vendor's catalog
 	Featured      bool                   `protobuf:"varint,2,opt,name=featured,proto3" json:"featured,omitempty"`
 	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Query         string                 `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"` // optional name/description substring search (POS search bar)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -486,6 +511,13 @@ func (x *ListProductsRequest) GetPageSize() int32 {
 func (x *ListProductsRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListProductsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
 	}
 	return ""
 }
@@ -854,6 +886,7 @@ type AdjustStockRequest struct {
 	Reason          AdjustmentReason            `protobuf:"varint,5,opt,name=reason,proto3,enum=grocery.catalog.AdjustmentReason" json:"reason,omitempty"`
 	ExpectedVersion string                      `protobuf:"bytes,6,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"` // optional concurrency check
 	IdempotencyKey  string                      `protobuf:"bytes,7,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	UnitCost        int64                       `protobuf:"varint,8,opt,name=unit_cost,json=unitCost,proto3" json:"unit_cost,omitempty"` // purchase price per unit in minor units (RESTOCK only)
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -946,6 +979,13 @@ func (x *AdjustStockRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *AdjustStockRequest) GetUnitCost() int64 {
+	if x != nil {
+		return x.UnitCost
+	}
+	return 0
 }
 
 type isAdjustStockRequest_Change interface {
@@ -1391,14 +1431,15 @@ const file_catalog_proto_catalog_proto_rawDesc = "" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
 	"\bcategory\x18\x04 \x01(\tR\bcategory\x12\x14\n" +
 	"\x05price\x18\x05 \x01(\x03R\x05price\x12\x16\n" +
-	"\x06active\x18\x06 \x01(\bR\x06active\"\x8e\x01\n" +
+	"\x06active\x18\x06 \x01(\bR\x06active\"\xa4\x01\n" +
 	"\x13ListProductsRequest\x12\x1f\n" +
 	"\vbusiness_id\x18\x01 \x01(\tR\n" +
 	"businessId\x12\x1a\n" +
 	"\bfeatured\x18\x02 \x01(\bR\bfeatured\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x04 \x01(\tR\tpageToken\"t\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\x12\x14\n" +
+	"\x05query\x18\x05 \x01(\tR\x05query\"t\n" +
 	"\x14ListProductsResponse\x124\n" +
 	"\bproducts\x18\x01 \x03(\v2\x18.grocery.catalog.ProductR\bproducts\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xd9\x01\n" +
@@ -1429,7 +1470,7 @@ const file_catalog_proto_catalog_proto_rawDesc = "" +
 	"sufficient\x18\x03 \x01(\bR\n" +
 	"sufficient\"Z\n" +
 	"\x19CheckAvailabilityResponse\x12=\n" +
-	"\aresults\x18\x01 \x03(\v2#.grocery.catalog.AvailabilityResultR\aresults\"\x9e\x02\n" +
+	"\aresults\x18\x01 \x03(\v2#.grocery.catalog.AvailabilityResultR\aresults\"\xbb\x02\n" +
 	"\x12AdjustStockRequest\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x1f\n" +
@@ -1439,7 +1480,8 @@ const file_catalog_proto_catalog_proto_rawDesc = "" +
 	"\x06set_to\x18\x04 \x01(\x03H\x00R\x05setTo\x129\n" +
 	"\x06reason\x18\x05 \x01(\x0e2!.grocery.catalog.AdjustmentReasonR\x06reason\x12)\n" +
 	"\x10expected_version\x18\x06 \x01(\tR\x0fexpectedVersion\x12'\n" +
-	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKeyB\b\n" +
+	"\x0fidempotency_key\x18\a \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
+	"\tunit_cost\x18\b \x01(\x03R\bunitCostB\b\n" +
 	"\x06change\"i\n" +
 	"\vReserveItem\x12\x1d\n" +
 	"\n" +

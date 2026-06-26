@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: business.proto
+// source: business/proto/business.proto
 
 package proto
 
@@ -39,7 +39,7 @@ type Business struct {
 
 func (x *Business) Reset() {
 	*x = Business{}
-	mi := &file_business_proto_msgTypes[0]
+	mi := &file_business_proto_business_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -51,7 +51,7 @@ func (x *Business) String() string {
 func (*Business) ProtoMessage() {}
 
 func (x *Business) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[0]
+	mi := &file_business_proto_business_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -64,7 +64,7 @@ func (x *Business) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Business.ProtoReflect.Descriptor instead.
 func (*Business) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{0}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Business) GetId() string {
@@ -152,7 +152,7 @@ type CreateBusinessRequest struct {
 
 func (x *CreateBusinessRequest) Reset() {
 	*x = CreateBusinessRequest{}
-	mi := &file_business_proto_msgTypes[1]
+	mi := &file_business_proto_business_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -164,7 +164,7 @@ func (x *CreateBusinessRequest) String() string {
 func (*CreateBusinessRequest) ProtoMessage() {}
 
 func (x *CreateBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[1]
+	mi := &file_business_proto_business_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -177,7 +177,7 @@ func (x *CreateBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBusinessRequest.ProtoReflect.Descriptor instead.
 func (*CreateBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{1}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateBusinessRequest) GetName() string {
@@ -238,7 +238,7 @@ type GetBusinessRequest struct {
 
 func (x *GetBusinessRequest) Reset() {
 	*x = GetBusinessRequest{}
-	mi := &file_business_proto_msgTypes[2]
+	mi := &file_business_proto_business_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -250,7 +250,7 @@ func (x *GetBusinessRequest) String() string {
 func (*GetBusinessRequest) ProtoMessage() {}
 
 func (x *GetBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[2]
+	mi := &file_business_proto_business_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -263,7 +263,7 @@ func (x *GetBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusinessRequest.ProtoReflect.Descriptor instead.
 func (*GetBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{2}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetBusinessRequest) GetBusinessId() string {
@@ -290,7 +290,7 @@ type UpdateBusinessRequest struct {
 
 func (x *UpdateBusinessRequest) Reset() {
 	*x = UpdateBusinessRequest{}
-	mi := &file_business_proto_msgTypes[3]
+	mi := &file_business_proto_business_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -302,7 +302,7 @@ func (x *UpdateBusinessRequest) String() string {
 func (*UpdateBusinessRequest) ProtoMessage() {}
 
 func (x *UpdateBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[3]
+	mi := &file_business_proto_business_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -315,7 +315,7 @@ func (x *UpdateBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateBusinessRequest.ProtoReflect.Descriptor instead.
 func (*UpdateBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{3}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UpdateBusinessRequest) GetBusinessId() string {
@@ -390,7 +390,7 @@ type DeleteBusinessRequest struct {
 
 func (x *DeleteBusinessRequest) Reset() {
 	*x = DeleteBusinessRequest{}
-	mi := &file_business_proto_msgTypes[4]
+	mi := &file_business_proto_business_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -402,7 +402,7 @@ func (x *DeleteBusinessRequest) String() string {
 func (*DeleteBusinessRequest) ProtoMessage() {}
 
 func (x *DeleteBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[4]
+	mi := &file_business_proto_business_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -415,7 +415,7 @@ func (x *DeleteBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBusinessRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{4}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DeleteBusinessRequest) GetBusinessId() string {
@@ -434,7 +434,7 @@ type DeleteBusinessResponse struct {
 
 func (x *DeleteBusinessResponse) Reset() {
 	*x = DeleteBusinessResponse{}
-	mi := &file_business_proto_msgTypes[5]
+	mi := &file_business_proto_business_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -446,7 +446,7 @@ func (x *DeleteBusinessResponse) String() string {
 func (*DeleteBusinessResponse) ProtoMessage() {}
 
 func (x *DeleteBusinessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_business_proto_msgTypes[5]
+	mi := &file_business_proto_business_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +459,7 @@ func (x *DeleteBusinessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBusinessResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBusinessResponse) Descriptor() ([]byte, []int) {
-	return file_business_proto_rawDescGZIP(), []int{5}
+	return file_business_proto_business_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteBusinessResponse) GetSuccess() bool {
@@ -469,11 +469,11 @@ func (x *DeleteBusinessResponse) GetSuccess() bool {
 	return false
 }
 
-var File_business_proto protoreflect.FileDescriptor
+var File_business_proto_business_proto protoreflect.FileDescriptor
 
-const file_business_proto_rawDesc = "" +
+const file_business_proto_business_proto_rawDesc = "" +
 	"\n" +
-	"\x0ebusiness.proto\x12\x10grocery.business\"\xfc\x01\n" +
+	"\x1dbusiness/proto/business.proto\x12\x10grocery.business\"\xfc\x01\n" +
 	"\bBusiness\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
@@ -520,19 +520,19 @@ const file_business_proto_rawDesc = "" +
 	"\x0eDeleteBusiness\x12'.grocery.business.DeleteBusinessRequest\x1a(.grocery.business.DeleteBusinessResponseB$Z\"thugcorp.io/grocery/business/protob\x06proto3"
 
 var (
-	file_business_proto_rawDescOnce sync.Once
-	file_business_proto_rawDescData []byte
+	file_business_proto_business_proto_rawDescOnce sync.Once
+	file_business_proto_business_proto_rawDescData []byte
 )
 
-func file_business_proto_rawDescGZIP() []byte {
-	file_business_proto_rawDescOnce.Do(func() {
-		file_business_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_business_proto_rawDesc), len(file_business_proto_rawDesc)))
+func file_business_proto_business_proto_rawDescGZIP() []byte {
+	file_business_proto_business_proto_rawDescOnce.Do(func() {
+		file_business_proto_business_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_business_proto_business_proto_rawDesc), len(file_business_proto_business_proto_rawDesc)))
 	})
-	return file_business_proto_rawDescData
+	return file_business_proto_business_proto_rawDescData
 }
 
-var file_business_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_business_proto_goTypes = []any{
+var file_business_proto_business_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_business_proto_business_proto_goTypes = []any{
 	(*Business)(nil),               // 0: grocery.business.Business
 	(*CreateBusinessRequest)(nil),  // 1: grocery.business.CreateBusinessRequest
 	(*GetBusinessRequest)(nil),     // 2: grocery.business.GetBusinessRequest
@@ -540,7 +540,7 @@ var file_business_proto_goTypes = []any{
 	(*DeleteBusinessRequest)(nil),  // 4: grocery.business.DeleteBusinessRequest
 	(*DeleteBusinessResponse)(nil), // 5: grocery.business.DeleteBusinessResponse
 }
-var file_business_proto_depIdxs = []int32{
+var file_business_proto_business_proto_depIdxs = []int32{
 	1, // 0: grocery.business.BusinessService.CreateBusiness:input_type -> grocery.business.CreateBusinessRequest
 	2, // 1: grocery.business.BusinessService.GetBusiness:input_type -> grocery.business.GetBusinessRequest
 	3, // 2: grocery.business.BusinessService.UpdateBusiness:input_type -> grocery.business.UpdateBusinessRequest
@@ -556,26 +556,26 @@ var file_business_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_business_proto_init() }
-func file_business_proto_init() {
-	if File_business_proto != nil {
+func init() { file_business_proto_business_proto_init() }
+func file_business_proto_business_proto_init() {
+	if File_business_proto_business_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_business_proto_rawDesc), len(file_business_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_business_proto_business_proto_rawDesc), len(file_business_proto_business_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_business_proto_goTypes,
-		DependencyIndexes: file_business_proto_depIdxs,
-		MessageInfos:      file_business_proto_msgTypes,
+		GoTypes:           file_business_proto_business_proto_goTypes,
+		DependencyIndexes: file_business_proto_business_proto_depIdxs,
+		MessageInfos:      file_business_proto_business_proto_msgTypes,
 	}.Build()
-	File_business_proto = out.File
-	file_business_proto_goTypes = nil
-	file_business_proto_depIdxs = nil
+	File_business_proto_business_proto = out.File
+	file_business_proto_business_proto_goTypes = nil
+	file_business_proto_business_proto_depIdxs = nil
 }

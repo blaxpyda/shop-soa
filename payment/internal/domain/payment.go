@@ -5,9 +5,10 @@ import "time"
 type Provider string
 
 const (
-	ProviderUnspecified  Provider = "unspecified"
-	ProviderMTNMomo      Provider = "mtn_momo"
-	ProviderAirtelMoney  Provider = "airtel_money"
+	ProviderUnspecified Provider = "unspecified"
+	ProviderMTNMomo     Provider = "mtn_momo"
+	ProviderAirtelMoney Provider = "airtel_money"
+	ProviderCash        Provider = "cash"
 )
 
 type PaymentStatus string

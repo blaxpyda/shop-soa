@@ -57,13 +57,13 @@ func (r *catalogRepository) CreateProduct(ctx context.Context, input domain.Crea
 		Description: input.Description,
 		Category:    input.Category,
 		Price:       input.Price,
+		CostPrice:   input.CostPrice,
 		Currency:    input.Currency,
 		ImageURL:    input.ImageURL,
 		Active:      true,
 	}
 	stock := &domain.StockItem{
 		ProductID:  product.ID,
-		LocationID: "",
 		BusinessID: input.BusinessID,
 		OnHand:     input.InitialStock,
 		Reserved:   0,
@@ -106,6 +106,9 @@ func (r *catalogRepository) UpdateProduct(ctx context.Context, productID string,
 	if input.Price > 0 {
 		updates["price"] = input.Price
 	}
+	if input.CostPrice > 0 {
+		updates["cost_price"] = input.CostPrice
+	}
 	if input.Active != nil {
 		updates["active"] = *input.Active
 	}
@@ -124,6 +127,10 @@ func (r *catalogRepository) ListProducts(ctx context.Context, filter domain.List
 	query := r.db.WithContext(ctx).Model(&domain.Product{}).Where("active = ?", true)
 	if filter.BusinessID != "" {
 		query = query.Where("business_id = ?", filter.BusinessID)
+	}
+	if filter.Query != "" {
+		like := "%" + filter.Query + "%"
+		query = query.Where("name LIKE ? OR description LIKE ?", like, like)
 	}
 
 	pageSize := filter.PageSize
@@ -146,10 +153,17 @@ func (r *catalogRepository) ListProducts(ctx context.Context, filter domain.List
 
 // ---- Stock ----
 
+func stockQuery(db *gorm.DB, productID, locationID string) *gorm.DB {
+	q := db.Where("product_id = ?", productID)
+	if locationID != "" {
+		q = q.Where("location_id = ?", locationID)
+	}
+	return q
+}
+
 func (r *catalogRepository) GetStockItem(ctx context.Context, productID, locationID string) (*domain.StockItem, error) {
 	var item domain.StockItem
-	if err := r.db.WithContext(ctx).
-		Where("product_id = ? AND location_id = ?", productID, locationID).
+	if err := stockQuery(r.db.WithContext(ctx), productID, locationID).
 		First(&item).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -176,8 +190,7 @@ func (r *catalogRepository) AdjustStock(ctx context.Context, input domain.Adjust
 			var log domain.AdjustmentLog
 			if err := tx.Where("idempotency_key = ?", input.IdempotencyKey).First(&log).Error; err == nil {
 				var stock domain.StockItem
-				if err := tx.Where("product_id = ? AND location_id = ?", input.ProductID, input.LocationID).
-					First(&stock).Error; err != nil {
+				if err := stockQuery(tx, input.ProductID, input.LocationID).First(&stock).Error; err != nil {
 					return err
 				}
 				result = &stock
@@ -186,8 +199,7 @@ func (r *catalogRepository) AdjustStock(ctx context.Context, input domain.Adjust
 		}
 
 		var stock domain.StockItem
-		if err := tx.Where("product_id = ? AND location_id = ?", input.ProductID, input.LocationID).
-			First(&stock).Error; err != nil {
+		if err := stockQuery(tx, input.ProductID, input.LocationID).First(&stock).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("stock item not found for product %s", input.ProductID)
 			}
@@ -213,14 +225,14 @@ func (r *catalogRepository) AdjustStock(ctx context.Context, input domain.Adjust
 		}
 
 		newVersion := newUUID()
-		if err := tx.Model(&domain.StockItem{}).
-			Where("product_id = ? AND location_id = ? AND version = ?", input.ProductID, input.LocationID, stock.Version).
-			Updates(map[string]interface{}{"on_hand": newOnHand, "version": newVersion}).Error; err != nil {
+		updateQ := stockQuery(tx.Model(&domain.StockItem{}), input.ProductID, input.LocationID).
+			Where("version = ?", stock.Version)
+		if err := updateQ.Updates(map[string]interface{}{"on_hand": newOnHand, "version": newVersion}).Error; err != nil {
 			return err
 		}
 
 		if input.IdempotencyKey != "" {
-			entry := domain.AdjustmentLog{IdempotencyKey: input.IdempotencyKey, ProductID: input.ProductID}
+			entry := domain.AdjustmentLog{IdempotencyKey: input.IdempotencyKey, ProductID: input.ProductID, UnitCost: input.UnitCost}
 			if err := tx.Create(&entry).Error; err != nil {
 				return err
 			}
@@ -248,16 +260,15 @@ func (r *catalogRepository) CheckAvailability(ctx context.Context, queries []dom
 		return nil, err
 	}
 
-	// key: "productID:locationID"
 	stockMap := make(map[string]*domain.StockItem, len(items))
 	for _, item := range items {
-		stockMap[item.ProductID+":"+item.LocationID] = item
+		stockMap[item.ProductID] = item
 	}
 
 	results := make([]*domain.AvailabilityResult, len(queries))
 	for i, q := range queries {
 		avail := int64(0)
-		if item, ok := stockMap[q.ProductID+":"+q.LocationID]; ok {
+		if item, ok := stockMap[q.ProductID]; ok {
 			avail = item.Available()
 		}
 		results[i] = &domain.AvailabilityResult{
@@ -292,8 +303,7 @@ func (r *catalogRepository) Reserve(ctx context.Context, input domain.ReserveInp
 		allOK := true
 		for _, item := range input.Items {
 			var stock domain.StockItem
-			if err := tx.Where("product_id = ? AND location_id = ?", item.ProductID, item.LocationID).
-				First(&stock).Error; err != nil {
+			if err := stockQuery(tx, item.ProductID, item.LocationID).First(&stock).Error; err != nil {
 				return fmt.Errorf("stock not found for product %s: %w", item.ProductID, err)
 			}
 			if avail := stock.Available(); avail < item.Quantity {
@@ -312,8 +322,7 @@ func (r *catalogRepository) Reserve(ctx context.Context, input domain.ReserveInp
 
 		// Atomically increment reserved for each item.
 		for _, item := range input.Items {
-			if err := tx.Model(&domain.StockItem{}).
-				Where("product_id = ? AND location_id = ?", item.ProductID, item.LocationID).
+			if err := stockQuery(tx.Model(&domain.StockItem{}), item.ProductID, item.LocationID).
 				Update("reserved", gorm.Expr("reserved + ?", item.Quantity)).Error; err != nil {
 				return err
 			}
@@ -390,8 +399,7 @@ func (r *catalogRepository) CommitReservation(ctx context.Context, reservationID
 		}
 
 		for _, item := range res.Items {
-			if err := tx.Model(&domain.StockItem{}).
-				Where("product_id = ? AND location_id = ?", item.ProductID, item.LocationID).
+			if err := stockQuery(tx.Model(&domain.StockItem{}), item.ProductID, item.LocationID).
 				Updates(map[string]interface{}{
 					"on_hand":  gorm.Expr("on_hand - ?", item.Quantity),
 					"reserved": gorm.Expr("reserved - ?", item.Quantity),
@@ -420,8 +428,7 @@ func (r *catalogRepository) ReleaseReservation(ctx context.Context, reservationI
 		}
 
 		for _, item := range res.Items {
-			if err := tx.Model(&domain.StockItem{}).
-				Where("product_id = ? AND location_id = ?", item.ProductID, item.LocationID).
+			if err := stockQuery(tx.Model(&domain.StockItem{}), item.ProductID, item.LocationID).
 				Update("reserved", gorm.Expr("reserved - ?", item.Quantity)).Error; err != nil {
 				return err
 			}

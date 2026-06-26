@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
@@ -38,6 +40,7 @@ func Load() (*Config, error) {
 	viper.AddConfigPath(".")
 
 	viper.SetEnvPrefix("PAYMENT")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {

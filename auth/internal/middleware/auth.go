@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	pb "thugcorp.io/grocery/auth/proto"
 )
 
 type contextKey string
@@ -31,10 +32,11 @@ type CustomClaims struct {
 
 // publicMethods are RPCs that do not require a JWT.
 var publicMethods = map[string]bool{
-	"/grocery.auth.AuthService/Signup":     true,
-	"/grocery.auth.AuthService/Login":      true,
-	"/grocery.auth.AuthService/VerifyCode": true,
-	"/grocery.auth.AuthService/ResendCode": true,
+	pb.IdentityService_Signup_FullMethodName:         true,
+	pb.IdentityService_Login_FullMethodName:          true,
+	pb.IdentityService_VerifyCode_FullMethodName:     true,
+	pb.IdentityService_ResendCode_FullMethodName:     true,
+	pb.IdentityService_ForgotPassWord_FullMethodName: true,
 }
 
 func AuthInterceptor(publicKey *rsa.PublicKey) grpc.UnaryServerInterceptor {

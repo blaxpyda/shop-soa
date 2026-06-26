@@ -100,4 +100,5 @@ type ListOrdersFilter struct {
 	Status     OrderStatus
 	PageSize   int
 	PageToken  string
+	AllOrders  bool // super-admin: bypass user/business scoping
 }

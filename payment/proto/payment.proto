@@ -30,6 +30,7 @@ enum Provider {
   PROVIDER_UNSPECIFIED = 0;
   PROVIDER_MTN_MOMO = 1;
   PROVIDER_AIRTEL_MONEY = 2;
+  PROVIDER_CASH = 3;
 }
 
 // ===================== Payments =====================

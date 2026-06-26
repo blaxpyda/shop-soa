@@ -38,6 +38,7 @@ message Product {
   string image_url = 8;
   bool active = 9;
   google.protobuf.Timestamp created_at = 10;
+  int64 cost_price = 11; // purchase/cost price in minor units
 }
 
 message CreateProductRequest {
@@ -49,6 +50,7 @@ message CreateProductRequest {
   string currency = 6;
   string image_url = 7;
   int64 initial_stock = 8;   // merge payoff: seeds the StockItem in the same call
+  int64 cost_price = 9;      // purchase/cost price in minor units
 }
 
 message GetProductRequest { string product_id = 1; }
@@ -60,6 +62,7 @@ message UpdateProductRequest {
   string category = 4;
   int64 price = 5;
   bool active = 6;
+  int64 cost_price = 7;  // purchase/cost price in minor units
 }
 
 message ListProductsRequest {
@@ -67,6 +70,7 @@ message ListProductsRequest {
   bool featured = 2;
   int32 page_size = 3;
   string page_token = 4;
+  string query = 5;          // optional name/description substring search (POS search bar)
 }
 
 message ListProductsResponse {
@@ -109,6 +113,7 @@ message AdjustStockRequest {
   AdjustmentReason reason = 5;
   string expected_version = 6;  // optional concurrency check
   string idempotency_key = 7;
+  int64 unit_cost = 8;          // purchase price per unit in minor units (RESTOCK only)
 }
 enum AdjustmentReason {
   ADJUSTMENT_REASON_UNSPECIFIED = 0;

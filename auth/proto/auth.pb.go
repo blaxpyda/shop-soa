@@ -313,6 +313,8 @@ type AuthResponse struct {
 	NeedsVerify   bool                   `protobuf:"varint,4,opt,name=needs_verify,json=needsVerify,proto3" json:"needs_verify,omitempty"`
 	VerifyMethod  string                 `protobuf:"bytes,5,opt,name=verify_method,json=verifyMethod,proto3" json:"verify_method,omitempty"`
 	ErrorMessage  string                 `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Role          string                 `protobuf:"bytes,7,opt,name=role,proto3" json:"role,omitempty"`
+	BusinessId    string                 `protobuf:"bytes,8,opt,name=business_id,json=businessId,proto3" json:"business_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -385,6 +387,20 @@ func (x *AuthResponse) GetVerifyMethod() string {
 func (x *AuthResponse) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *AuthResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AuthResponse) GetBusinessId() string {
+	if x != nil {
+		return x.BusinessId
 	}
 	return ""
 }
@@ -1154,14 +1170,17 @@ const file_auth_proto_auth_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"C\n" +
 	"\x15ForgotPassWordRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x14\n" +
-	"\x05phone\x18\x02 \x01(\tR\x05phone\"\xcf\x01\n" +
+	"\x05phone\x18\x02 \x01(\tR\x05phone\"\x84\x02\n" +
 	"\fAuthResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12#\n" +
 	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\x12!\n" +
 	"\fneeds_verify\x18\x04 \x01(\bR\vneedsVerify\x12#\n" +
 	"\rverify_method\x18\x05 \x01(\tR\fverifyMethod\x12#\n" +
-	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\"\xe7\x01\n" +
+	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\x12\x12\n" +
+	"\x04role\x18\a \x01(\tR\x04role\x12\x1f\n" +
+	"\vbusiness_id\x18\b \x01(\tR\n" +
+	"businessId\"\xe7\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x14\n" +

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"thugcorp.io/ordering/internal/clients"
 	"thugcorp.io/ordering/internal/domain"
+	"thugcorp.io/ordering/internal/middleware"
 )
 
 type OrderingService interface {
@@ -54,7 +55,7 @@ func (s *orderingService) AddItem(ctx context.Context, userID, productID string,
 		return nil, errors.New("quantity must be positive")
 	}
 
-	product, err := s.catalogClient.GetProduct(ctx, productID)
+	product, err := s.catalogClient.GetProduct(middleware.ForwardAuth(ctx), productID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look up product: %w", err)
 	}
@@ -162,11 +163,13 @@ func (s *orderingService) Checkout(ctx context.Context, input domain.CheckoutInp
 	}
 
 	// Snapshot cart items → order items.
+	orderID := uuid.New().String()
 	var orderItems []domain.OrderItem
 	var total int64
 	currency := cart.DisplayCurrency()
 
-	for _, ci := range cart.Items {
+	reserveItems := make([]clients.ReserveItem, len(cart.Items))
+	for i, ci := range cart.Items {
 		lineTotal := ci.UnitPrice * ci.Quantity
 		total += lineTotal
 		orderItems = append(orderItems, domain.OrderItem{
@@ -178,10 +181,25 @@ func (s *orderingService) Checkout(ctx context.Context, input domain.CheckoutInp
 			Quantity:    ci.Quantity,
 			LineTotal:   lineTotal,
 		})
+		reserveItems[i] = clients.ReserveItem{
+			ProductID: ci.ProductID,
+			Quantity:  ci.Quantity,
+		}
+	}
+
+	// Reserve stock before creating the order. Use the order ID as the
+	// idempotency key so a retry after partial failure re-uses the same reservation.
+	catalogCtx := middleware.ForwardAuth(ctx)
+	reservation, err := s.catalogClient.Reserve(catalogCtx, orderID, reserveItems, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("stock reservation failed: %w", err)
+	}
+	if !reservation.Held {
+		return nil, fmt.Errorf("insufficient stock for products: %v", reservation.Shortfalls)
 	}
 
 	order := &domain.Order{
-		ID:              uuid.New().String(),
+		ID:              orderID,
 		UserID:          input.UserID,
 		Status:          domain.OrderStatusPendingPayment,
 		Total:           total,
@@ -191,7 +209,20 @@ func (s *orderingService) Checkout(ctx context.Context, input domain.CheckoutInp
 		Items:           orderItems,
 	}
 
-	return s.repo.CreateOrderAndClearCart(ctx, input.UserID, order)
+	created, err := s.repo.CreateOrderAndClearCart(ctx, input.UserID, order)
+	if err != nil {
+		// Order creation failed — release the stock so it isn't held forever.
+		_ = s.catalogClient.ReleaseReservation(catalogCtx, reservation.ReservationID, "order_creation_failed")
+		return nil, err
+	}
+
+	// Commit the reservation immediately — stock is definitively sold.
+	if err := s.catalogClient.CommitReservation(catalogCtx, reservation.ReservationID); err != nil {
+		// Uncommitted reservation will auto-expire via TTL, but log the issue.
+		return created, fmt.Errorf("order created but reservation commit failed (will expire): %w", err)
+	}
+
+	return created, nil
 }
 
 func (s *orderingService) GetOrder(ctx context.Context, orderID string) (*domain.Order, error) {
@@ -209,7 +240,7 @@ func (s *orderingService) GetOrder(ctx context.Context, orderID string) (*domain
 }
 
 func (s *orderingService) ListOrders(ctx context.Context, filter domain.ListOrdersFilter) ([]*domain.Order, error) {
-	if filter.UserID == "" && filter.BusinessID == "" {
+	if !filter.AllOrders && filter.UserID == "" && filter.BusinessID == "" {
 		return nil, errors.New("user_id or business_id filter is required")
 	}
 	return s.repo.ListOrders(ctx, filter)

@@ -50,12 +50,24 @@ func (r *authRepository) GetUserByID(ctx context.Context, userID string) (*domai
 func (r *authRepository) GetUserByEmailOrPhone(ctx context.Context, email, phone *string) (*domain.User, error) {
 	var user domain.User
 	query := r.db.Model(&domain.User{})
-	if email != nil {
+
+	hasCondition := false
+	if email != nil && *email != "" {
 		query = query.Where("email = ?", *email)
+		hasCondition = true
 	}
-	if phone != nil {
-		query = query.Or("phone = ?", *phone)
+	if phone != nil && *phone != "" {
+		if hasCondition {
+			query = query.Or("phone = ?", *phone)
+		} else {
+			query = query.Where("phone = ?", *phone)
+		}
+		hasCondition = true
 	}
+	if !hasCondition {
+		return nil, nil
+	}
+
 	if err := query.First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

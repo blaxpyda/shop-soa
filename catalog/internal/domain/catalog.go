@@ -4,12 +4,13 @@ import "time"
 
 // Product holds catalog definition + price (slow-changing data).
 type Product struct {
-	ID          string    `gorm:"primaryKey"`
-	BusinessID  string    `gorm:"not null;index"`
-	Name        string    `gorm:"not null"`
+	ID          string `gorm:"primaryKey"`
+	BusinessID  string `gorm:"not null;index"`
+	Name        string `gorm:"not null"`
 	Description string
 	Category    string `gorm:"index"`
 	Price       int64  `gorm:"not null"`
+	CostPrice   int64  `gorm:"not null;default:0"`
 	Currency    string `gorm:"not null"`
 	ImageURL    string
 	Active      bool      `gorm:"not null;default:true"`
@@ -21,7 +22,6 @@ type Product struct {
 // LocationID is "" for single-location businesses.
 type StockItem struct {
 	ProductID  string    `gorm:"primaryKey"`
-	LocationID string    `gorm:"primaryKey"`
 	BusinessID string    `gorm:"not null;index"`
 	OnHand     int64     `gorm:"not null;default:0"`
 	Reserved   int64     `gorm:"not null;default:0"`
@@ -40,6 +40,7 @@ func (s *StockItem) Available() int64 {
 type AdjustmentLog struct {
 	IdempotencyKey string    `gorm:"primaryKey"`
 	ProductID      string    `gorm:"not null"`
+	UnitCost       int64     // purchase price per unit in minor units (RESTOCK only)
 	CreatedAt      time.Time `gorm:"autoCreateTime"`
 }
 
@@ -77,6 +78,7 @@ type CreateProductInput struct {
 	Description  string
 	Category     string
 	Price        int64
+	CostPrice    int64
 	Currency     string
 	ImageURL     string
 	InitialStock int64
@@ -87,11 +89,13 @@ type UpdateProductInput struct {
 	Description string
 	Category    string
 	Price       int64
+	CostPrice   int64
 	Active      *bool
 }
 
 type ListProductsFilter struct {
 	BusinessID string
+	Query      string // optional name/description substring
 	PageSize   int
 	PageToken  string // encoded offset cursor
 }
@@ -104,6 +108,7 @@ type AdjustStockInput struct {
 	Reason          string
 	ExpectedVersion string
 	IdempotencyKey  string
+	UnitCost        int64 // purchase price per unit in minor units (RESTOCK only)
 }
 
 type AvailabilityQuery struct {

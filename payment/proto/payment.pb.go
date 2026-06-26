@@ -28,6 +28,7 @@ const (
 	Provider_PROVIDER_UNSPECIFIED  Provider = 0
 	Provider_PROVIDER_MTN_MOMO     Provider = 1
 	Provider_PROVIDER_AIRTEL_MONEY Provider = 2
+	Provider_PROVIDER_CASH         Provider = 3
 )
 
 // Enum value maps for Provider.
@@ -36,11 +37,13 @@ var (
 		0: "PROVIDER_UNSPECIFIED",
 		1: "PROVIDER_MTN_MOMO",
 		2: "PROVIDER_AIRTEL_MONEY",
+		3: "PROVIDER_CASH",
 	}
 	Provider_value = map[string]int32{
 		"PROVIDER_UNSPECIFIED":  0,
 		"PROVIDER_MTN_MOMO":     1,
 		"PROVIDER_AIRTEL_MONEY": 2,
+		"PROVIDER_CASH":         3,
 	}
 )
 
@@ -1084,11 +1087,12 @@ const file_payment_proto_payment_proto_rawDesc = "" +
 	"\bcurrency\x18\x03 \x01(\tR\bcurrency\x125\n" +
 	"\bprovider\x18\x04 \x01(\x0e2\x19.grocery.payment.ProviderR\bprovider\x12\x14\n" +
 	"\x05phone\x18\x05 \x01(\tR\x05phone\x12'\n" +
-	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey*V\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey*i\n" +
 	"\bProvider\x12\x18\n" +
 	"\x14PROVIDER_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11PROVIDER_MTN_MOMO\x10\x01\x12\x19\n" +
-	"\x15PROVIDER_AIRTEL_MONEY\x10\x02*\xa1\x01\n" +
+	"\x15PROVIDER_AIRTEL_MONEY\x10\x02\x12\x11\n" +
+	"\rPROVIDER_CASH\x10\x03*\xa1\x01\n" +
 	"\rPaymentStatus\x12\x1e\n" +
 	"\x1aPAYMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PAYMENT_STATUS_PENDING\x10\x01\x12\x1c\n" +

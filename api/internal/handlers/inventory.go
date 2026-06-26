@@ -5,8 +5,55 @@ import (
 	"net/http"
 
 	catalogpb "thugcorp.io/catalog/proto"
+	"thugcorp.io/grocery/api/internal/middleware"
 	"thugcorp.io/grocery/api/internal/respond"
 )
+
+// GET /v1/inventory/low-stock-count — count of products with available <= threshold for caller's business
+func (h *Handlers) LowStockCount(w http.ResponseWriter, r *http.Request) {
+	_, _, businessID, _ := middleware.ClaimsFromCtx(r.Context())
+	if businessID == "" {
+		respond.JSON(w, http.StatusOK, map[string]int{"count": 0})
+		return
+	}
+
+	const threshold = 10
+
+	products, err := h.svc.Catalog.ListProducts(h.outgoingCtx(r), &catalogpb.ListProductsRequest{
+		BusinessId: businessID,
+		PageSize:   500,
+	})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+	if len(products.Products) == 0 {
+		respond.JSON(w, http.StatusOK, map[string]int{"count": 0})
+		return
+	}
+
+	queries := make([]*catalogpb.AvailabilityQuery, len(products.Products))
+	for i, p := range products.Products {
+		queries[i] = &catalogpb.AvailabilityQuery{
+			ProductId: p.Id,
+			Quantity:  threshold + 1, // !sufficient ⟺ available <= threshold
+		}
+	}
+
+	avail, err := h.svc.Catalog.CheckAvailability(h.outgoingCtx(r), &catalogpb.CheckAvailabilityRequest{Items: queries})
+	if err != nil {
+		respond.GRPCError(w, err)
+		return
+	}
+
+	count := 0
+	for _, result := range avail.Results {
+		if !result.Sufficient {
+			count++
+		}
+	}
+	respond.JSON(w, http.StatusOK, map[string]int{"count": count})
+}
 
 // POST /v1/inventory/availability
 func (h *Handlers) CheckAvailability(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +108,7 @@ func (h *Handlers) AdjustStock(w http.ResponseWriter, r *http.Request) {
 		Reason          string `json:"reason"`
 		ExpectedVersion string `json:"expected_version"`
 		IdempotencyKey  string `json:"idempotency_key"`
+		UnitCost        int64  `json:"unit_cost"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		respond.Error(w, http.StatusBadRequest, "invalid request body")
@@ -72,6 +120,7 @@ func (h *Handlers) AdjustStock(w http.ResponseWriter, r *http.Request) {
 		LocationId:      body.LocationID,
 		ExpectedVersion: body.ExpectedVersion,
 		IdempotencyKey:  body.IdempotencyKey,
+		UnitCost:        body.UnitCost,
 	}
 	switch {
 	case body.Delta != nil:

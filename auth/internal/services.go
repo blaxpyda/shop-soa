@@ -26,6 +26,7 @@ type AuthService interface {
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	CreateUser(ctx context.Context, callerRole string, input domain.CreateUserInput) (*domain.User, error)
 	ListUsers(ctx context.Context, filter domain.ListUsersFilter) ([]*domain.User, error)
+	UpdateUser(ctx context.Context, callerRole, targetUserID string, input domain.UpdateUserInput) (*domain.User, error)
 }
 
 // tokenClaims mirrors the fields parsed by middleware.CustomClaims so tokens
@@ -322,12 +323,23 @@ func (s *authService) ListUsers(ctx context.Context, filter domain.ListUsersFilt
 	return users, nil
 }
 
+func (s *authService) UpdateUser(ctx context.Context, callerRole, targetUserID string, input domain.UpdateUserInput) (*domain.User, error) {
+	if callerRole == domain.RoleSuperAdmin {
+		return s.authRepository.UpdateUser(ctx, targetUserID, input)
+	}
+	// Admins can only assign a business — not change roles or other fields.
+	if callerRole == domain.RoleAdmin && input.Role == "" {
+		return s.authRepository.UpdateUser(ctx, targetUserID, domain.UpdateUserInput{BusinessID: input.BusinessID})
+	}
+	return nil, errors.New("forbidden: insufficient permissions to update this user")
+}
+
 // ---- Helpers ----
 
 func (s *authService) generateToken(user *domain.User) (string, error) {
 	ttl := s.tokenTTL
 	if ttl <= 0 {
-		ttl = 3600
+		ttl = 3600 // Default to 1 hour if not set
 	}
 	claims := tokenClaims{
 		UserID:     user.ID,

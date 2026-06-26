@@ -42,6 +42,8 @@ func mapProvider(p domain.Provider) pb.Provider {
 		return pb.Provider_PROVIDER_MTN_MOMO
 	case domain.ProviderAirtelMoney:
 		return pb.Provider_PROVIDER_AIRTEL_MONEY
+	case domain.ProviderCash:
+		return pb.Provider_PROVIDER_CASH
 	default:
 		return pb.Provider_PROVIDER_UNSPECIFIED
 	}
@@ -53,6 +55,8 @@ func protoProvider(p pb.Provider) domain.Provider {
 		return domain.ProviderMTNMomo
 	case pb.Provider_PROVIDER_AIRTEL_MONEY:
 		return domain.ProviderAirtelMoney
+	case pb.Provider_PROVIDER_CASH:
+		return domain.ProviderCash
 	default:
 		return domain.ProviderUnspecified
 	}

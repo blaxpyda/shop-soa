@@ -61,8 +61,10 @@ func (h *authHandler) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Auth
 	}
 
 	return &pb.AuthResponse{
-		UserId: user.ID,
-		Token:  token,
+		UserId:     user.ID,
+		Token:      token,
+		Role:       user.Role,
+		BusinessId: user.BusinessID,
 	}, nil
 }
 
@@ -73,8 +75,10 @@ func (h *authHandler) VerifyCode(ctx context.Context, req *pb.VerifyCodeRequest)
 	}
 
 	return &pb.AuthResponse{
-		UserId: user.ID,
-		Token:  token,
+		UserId:     user.ID,
+		Token:      token,
+		Role:       user.Role,
+		BusinessId: user.BusinessID,
 	}, nil
 }
 
@@ -145,6 +149,55 @@ func (h *authHandler) ChangePassword(ctx context.Context, req *pb.ChangePassword
 	return &pb.EmptyResponse{Success: true}, nil
 }
 
+func (h *authHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.User, error) {
+	callerRole, _ := ctx.Value(middleware.RoleKey).(string)
+
+	input := domain.CreateUserInput{
+		Email:      req.Email,
+		Phone:      req.Phone,
+		Password:   req.Password,
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		Role:       req.Role,
+		BusinessID: req.BusinessId,
+	}
+
+	user, err := h.authService.CreateUser(ctx, callerRole, input)
+	if err != nil {
+		switch err.Error() {
+		case "only super-admin can create users":
+			return nil, status.Errorf(codes.PermissionDenied, "%v", err)
+		case "email or phone already registered":
+			return nil, status.Errorf(codes.AlreadyExists, "%v", err)
+		default:
+			return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+		}
+	}
+	return mapToProfileResponse(user), nil
+}
+
+func (h *authHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.User, error) {
+	callerRole, _ := ctx.Value(middleware.RoleKey).(string)
+
+	input := domain.UpdateUserInput{
+		FirstName:  req.FirstName,
+		LastName:   req.LastName,
+		Email:      req.Email,
+		Phone:      req.Phone,
+		Role:       req.Role,
+		BusinessID: req.BusinessId,
+	}
+
+	user, err := h.authService.UpdateUser(ctx, callerRole, req.UserId, input)
+	if err != nil {
+		if err.Error() == "forbidden: insufficient permissions to update this user" {
+			return nil, status.Errorf(codes.PermissionDenied, "%v", err)
+		}
+		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
+	}
+	return mapToProfileResponse(user), nil
+}
+
 func (h *authHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
 	filter := domain.ListUsersFilter{
 		Page:       int(req.Page),
@@ -177,13 +230,14 @@ func userIDFromCtx(ctx context.Context) (string, error) {
 
 func mapToProfileResponse(user *domain.User) *pb.User {
 	return &pb.User{
-		Id:        user.ID,
-		Email:     user.Email,
-		Phone:     user.Phone,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Address:   user.Address,
-		Country:   user.Country,
-		Role:      user.Role,
+		Id:         user.ID,
+		Email:      user.Email,
+		Phone:      user.Phone,
+		FirstName:  user.FirstName,
+		LastName:   user.LastName,
+		Address:    user.Address,
+		Country:    user.Country,
+		Role:       user.Role,
+		BusinessId: user.BusinessID,
 	}
 }

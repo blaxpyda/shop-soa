@@ -96,9 +96,14 @@ func bootstrapSuperAdmin(db *gorm.DB, cfg config.SuperAdminConfig) {
 		return
 	}
 
+	// Check by email, not by role constant — the constant value may change during
+	// refactors and would otherwise trigger a duplicate-bootstrap crash.
 	var count int64
-	db.Model(&domain.User{}).Where("role = ?", domain.RoleSuperAdmin).Count(&count)
+	db.Model(&domain.User{}).Where("email = ?", cfg.Email).Count(&count)
 	if count > 0 {
+		// Ensure the existing account still carries the super-admin role in case
+		// a previous bootstrap ran under a different constant value (e.g. "superadmin").
+		db.Model(&domain.User{}).Where("email = ?", cfg.Email).Update("role", domain.RoleSuperAdmin)
 		return
 	}
 
